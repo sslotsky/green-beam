@@ -6,11 +6,43 @@
   <style>
     body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; gap: 12px; }
     select { padding: 6px 10px; font-size: 14px; border-radius: 4px; }
+    .controls { display: flex; gap: 12px; align-items: center; }
+    button { padding: 6px 14px; font-size: 14px; border-radius: 4px; border: 1px solid #555; background: #222; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    button:hover { background: #333; }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 10; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 24px; min-width: 340px; max-height: 70vh; display: flex; flex-direction: column; gap: 16px; color: #fff; font-family: sans-serif; }
+    .modal h2 { margin: 0; font-size: 18px; }
+    .modal ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 50vh; }
+    .modal li { padding: 10px 12px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; }
+    .modal li:hover { background: #333; }
+    .modal li.selected { background: #00ff40; color: #000; }
+    .modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal button { font-size: 14px; }
+    .modal .play-btn { background: #00ff40; color: #000; border-color: #00ff40; }
+    .modal .play-btn:hover { background: #00cc33; }
+    .modal .empty { color: #888; font-style: italic; padding: 12px 0; }
   </style>
 </head>
 <body>
-  <select id="instrument"></select>
+  <div class="controls">
+    <select id="instrument"></select>
+    <button id="recordBtn"><span id="recDot" style="width:12px;height:12px;border-radius:50%;background:#cc0000;display:inline-block;"></span> Record</button>
+  </div>
   <canvas id="c" width="800" height="600"></canvas>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>Jukebox</h2>
+      <ul id="recordingList"></ul>
+      <div class="actions">
+        <button id="cancelBtn">Cancel</button>
+        <button id="playBtn" class="play-btn">Play</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.js"></script>
   <script>
     const canvas = document.getElementById('c');
@@ -61,9 +93,6 @@
     const pianoWidth = numWhiteKeys * whiteKeyWidth;
     const pianoX = (canvas.width - pianoWidth) / 2;
 
-    // Which white key indices have a black key to their right
-    // In one octave: C(0) D(1) E(2) F(3) G(4) A(5) B(6)
-    // Black keys: C#, D#, F#, G#, A# -> after indices 0,1,3,4,5
     const blackKeyAfter = new Set([0, 1, 3, 4, 5]);
 
     // Audio setup
@@ -112,6 +141,249 @@
       loadInstrument(instrumentSelect.value);
     });
 
+    // --- Recording ---
+    let recording = false;
+    let recordStartTime = 0;
+    let currentEvents = [];
+    const recordings = [];
+    const recordBtn = document.getElementById('recordBtn');
+    const recDot = document.getElementById('recDot');
+
+    function startRecording() {
+      recording = true;
+      recordStartTime = performance.now();
+      currentEvents = [];
+      recDot.style.background = '#ff0000';
+      recDot.style.boxShadow = '0 0 6px #ff0000';
+    }
+
+    function stopRecording() {
+      recording = false;
+      recDot.style.background = '#cc0000';
+      recDot.style.boxShadow = 'none';
+      if (currentEvents.length > 0) {
+        const timestamp = new Date();
+        recordings.push({
+          name: `Recording ${recordings.length + 1}`,
+          timestamp,
+          events: currentEvents,
+        });
+      }
+      currentEvents = [];
+    }
+
+    recordBtn.addEventListener('click', () => {
+      if (recording) stopRecording();
+      else startRecording();
+    });
+
+    function recordEvent(type, midi) {
+      if (!recording) return;
+      currentEvents.push({ type, midi, time: performance.now() - recordStartTime });
+    }
+
+    // --- Playback ---
+    let playing = false;
+    let playbackTimeouts = [];
+
+    function playRecording(rec) {
+      if (playing) stopPlayback();
+      playing = true;
+      const keysByMidi = {};
+      allKeys.forEach(k => { keysByMidi[k.midi] = k; });
+
+      for (const evt of rec.events) {
+        const tid = setTimeout(() => {
+          const key = keysByMidi[evt.midi];
+          if (!key) return;
+          if (evt.type === 'on') key.press();
+          else key.release();
+        }, evt.time);
+        playbackTimeouts.push(tid);
+      }
+
+      const duration = rec.events[rec.events.length - 1].time + 100;
+      playbackTimeouts.push(setTimeout(() => {
+        playing = false;
+        allKeys.forEach(k => { if (k.pressed) k.release(); });
+      }, duration));
+    }
+
+    function stopPlayback() {
+      playbackTimeouts.forEach(clearTimeout);
+      playbackTimeouts = [];
+      allKeys.forEach(k => { if (k.pressed) k.release(); });
+      playing = false;
+    }
+
+    // --- Jukebox on canvas ---
+    const jukebox = { x: 20, y: canvas.height - 160, w: 80, h: 150 };
+    let jukeboxHover = false;
+
+    function drawJukebox(ctx) {
+      const { x, y, w, h } = jukebox;
+      const cx = x + w / 2;
+
+      // Glow on hover
+      if (jukeboxHover) {
+        ctx.shadowColor = '#ffaa00';
+        ctx.shadowBlur = 15;
+      }
+
+      // Base body
+      const bodyY = y + 30;
+      const bodyH = h - 30;
+      const grad = ctx.createLinearGradient(x, y, x + w, y);
+      grad.addColorStop(0, '#8B4513');
+      grad.addColorStop(0.3, '#D2691E');
+      grad.addColorStop(0.5, '#DEB887');
+      grad.addColorStop(0.7, '#D2691E');
+      grad.addColorStop(1, '#8B4513');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, bodyY, w, bodyH, [0, 0, 8, 8]);
+      ctx.fill();
+
+      // Dome top
+      ctx.fillStyle = '#D2691E';
+      ctx.beginPath();
+      ctx.ellipse(cx, bodyY + 2, w / 2, 32, 0, Math.PI, 0);
+      ctx.fill();
+
+      // Glass window (top section with arch)
+      const glassY = bodyY - 10;
+      const glassGrad = ctx.createLinearGradient(x + 8, glassY, x + 8, glassY + 50);
+      glassGrad.addColorStop(0, '#ffee88');
+      glassGrad.addColorStop(0.5, '#ffcc44');
+      glassGrad.addColorStop(1, '#ff8800');
+      ctx.fillStyle = glassGrad;
+      ctx.beginPath();
+      ctx.moveTo(x + 10, bodyY + 40);
+      ctx.lineTo(x + 10, bodyY + 8);
+      ctx.quadraticCurveTo(cx, bodyY - 22, x + w - 10, bodyY + 8);
+      ctx.lineTo(x + w - 10, bodyY + 40);
+      ctx.closePath();
+      ctx.fill();
+
+      // Record lines in the glass
+      ctx.strokeStyle = '#aa6600';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {
+        const ly = bodyY + 12 + i * 7;
+        ctx.beginPath();
+        ctx.moveTo(x + 16, ly);
+        ctx.lineTo(x + w - 16, ly);
+        ctx.stroke();
+      }
+
+      // Speaker grille (lower section)
+      const grillY = bodyY + 55;
+      const grillH = 60;
+      ctx.fillStyle = '#2a1a0a';
+      ctx.beginPath();
+      ctx.roundRect(x + 10, grillY, w - 20, grillH, 4);
+      ctx.fill();
+
+      // Grille lines
+      ctx.strokeStyle = '#5a3a1a';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        const ly = grillY + 5 + i * 7;
+        ctx.beginPath();
+        ctx.moveTo(x + 14, ly);
+        ctx.lineTo(x + w - 14, ly);
+        ctx.stroke();
+      }
+
+      // Decorative trim
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 6, bodyY + 48);
+      ctx.lineTo(x + w - 6, bodyY + 48);
+      ctx.stroke();
+
+      // Coin slot
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.roundRect(cx - 8, bodyY + bodyH - 18, 16, 6, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(cx - 8, bodyY + bodyH - 18, 16, 6, 2);
+      ctx.stroke();
+
+      // Legs
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(x + 6, y + h - 4, 10, 6);
+      ctx.fillRect(x + w - 16, y + h - 4, 10, 6);
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // Label
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('JUKEBOX', cx, bodyY + bodyH - 24);
+      ctx.textAlign = 'left';
+    }
+
+    function isInJukebox(px, py) {
+      return px >= jukebox.x && px < jukebox.x + jukebox.w &&
+             py >= jukebox.y && py < jukebox.y + jukebox.h;
+    }
+
+    // --- Jukebox modal ---
+    const overlay = document.getElementById('overlay');
+    const recordingList = document.getElementById('recordingList');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const playBtn = document.getElementById('playBtn');
+    let selectedIndex = -1;
+
+    function renderList() {
+      recordingList.innerHTML = '';
+      selectedIndex = -1;
+      if (recordings.length === 0) {
+        recordingList.innerHTML = '<li class="empty">No recordings yet</li>';
+        return;
+      }
+      const sorted = recordings.slice().sort((a, b) => a.timestamp - b.timestamp);
+      sorted.forEach((rec, i) => {
+        const li = document.createElement('li');
+        const timeStr = rec.timestamp.toLocaleTimeString();
+        const noteCount = rec.events.filter(e => e.type === 'on').length;
+        li.innerHTML = `<span>${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
+        li.addEventListener('click', () => {
+          recordingList.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
+          li.classList.add('selected');
+          selectedIndex = recordings.indexOf(rec);
+        });
+        recordingList.appendChild(li);
+      });
+    }
+
+    function openJukebox() {
+      renderList();
+      overlay.classList.add('open');
+    }
+
+    cancelBtn.addEventListener('click', () => {
+      overlay.classList.remove('open');
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (selectedIndex < 0) return;
+      overlay.classList.remove('open');
+      playRecording(recordings[selectedIndex]);
+    });
+
+    // --- Piano Keys ---
     class PianoKey {
       constructor(x, y, width, height, isBlack, label, midi) {
         this.x = x;
@@ -137,14 +409,17 @@
           audioContext.resume();
           this.activeNote = instrument.play(this.midi);
         }
+        recordEvent('on', this.midi);
       }
 
       release() {
+        if (!this.pressed) return;
         this.pressed = false;
         if (this.activeNote) {
           this.activeNote.stop();
           this.activeNote = null;
         }
+        recordEvent('off', this.midi);
       }
 
       update() {
@@ -178,20 +453,15 @@
     const allKeys = [];
     const keysByLabel = {};
 
-    // Keyboard mapping: bottom two rows for white keys, top of those rows for black
     const whiteLabels = ['z','x','c','v','b','n','m','a','s','d','f','g','h','j'];
     const blackLabels = [
-      // octave 1: C# D# F# G# A#
       'q','w','e','r','t',
-      // octave 2: C# D# F# G# A#
       'y','u','i','o','p'
     ];
 
-    // MIDI semitone offsets within an octave for white keys: C D E F G A B
     const whiteMidiOffsets = [0, 2, 4, 5, 7, 9, 11];
-    // Black key offsets (relative to the white key they follow): C# D# F# G# A#
     const blackMidiOffsets = [1, 3, 6, 8, 10];
-    const startMidi = 60; // C4
+    const startMidi = 60;
 
     let whiteIndex = 0;
     let blackIndex = 0;
@@ -221,14 +491,12 @@
       }
     }
 
-    // Draw order: white first, then black on top
     allKeys.push(...whiteKeys, ...blackKeys);
 
     // Mouse interaction
     let mouseKey = null;
 
     function keyAtPoint(px, py) {
-      // Check black keys first (they're on top)
       for (const key of blackKeys) {
         if (key.containsPoint(px, py)) return key;
       }
@@ -242,13 +510,18 @@
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      if (isInJukebox(x, y)) { openJukebox(); return; }
       mouseKey = keyAtPoint(x, y);
       if (mouseKey) mouseKey.press();
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      if (e.buttons === 0) return;
       const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      jukeboxHover = isInJukebox(mx, my);
+      canvas.style.cursor = jukeboxHover ? 'pointer' : 'default';
+      if (e.buttons === 0) return;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const key = keyAtPoint(x, y);
@@ -268,6 +541,7 @@
     const heldKeys = new Set();
 
     window.addEventListener('keydown', (e) => {
+      if (overlay.classList.contains('open')) return;
       const label = e.key.toLowerCase();
       if (keysByLabel[label] && !heldKeys.has(label)) {
         heldKeys.add(label);
@@ -287,15 +561,15 @@
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw beams behind the piano
       allKeys.forEach(key => {
         key.update();
         key.drawBeams(ctx);
       });
 
-      // Draw piano on top
       whiteKeys.forEach(key => key.draw(ctx));
       blackKeys.forEach(key => key.draw(ctx));
+
+      drawJukebox(ctx);
 
       requestAnimationFrame(loop);
     }

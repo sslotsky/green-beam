@@ -2,6 +2,7 @@ import { PianoKey } from './piano-key.js';
 import { Jukebox } from './jukebox.js';
 import { Audio } from './audio.js';
 import { Recorder } from './recorder.js';
+import { makeShareUrl, loadFromHash, encode } from './sharing.js';
 
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -25,6 +26,27 @@ const blackKeyAfter = new Set([0, 1, 3, 4, 5]);
 // --- Services ---
 const audio = new Audio();
 const recorder = new Recorder();
+
+// --- Load shared recording from URL hash ---
+const sharedEvents = loadFromHash();
+let sharedRecording = null;
+if (sharedEvents) {
+  const hash = encode(sharedEvents);
+  const existing = recorder.recordings.find(r => r.hash === hash);
+  if (existing) {
+    sharedRecording = existing;
+  } else {
+    sharedRecording = {
+      name: 'Shared Song',
+      timestamp: new Date(),
+      events: sharedEvents,
+      hash,
+    };
+    recorder.recordings.push(sharedRecording);
+    recorder._save();
+  }
+  history.replaceState(null, '', location.pathname);
+}
 
 // --- Instrument selector ---
 const instrumentSelect = document.getElementById('instrument');
@@ -103,9 +125,16 @@ const cancelBtn = document.getElementById('cancelBtn');
 const playBtn = document.getElementById('playBtn');
 let selectedIndex = -1;
 
-function renderList() {
+function selectLi(li, rec) {
+  recordingList.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
+  li.classList.add('selected');
+  selectedIndex = recorder.recordings.indexOf(rec);
+}
+
+function renderList(preselect = null) {
   recordingList.innerHTML = '';
   selectedIndex = -1;
+  shareStatus.style.display = 'none';
   if (recorder.recordings.length === 0) {
     recordingList.innerHTML = '<li class="empty">No recordings yet</li>';
     return;
@@ -116,19 +145,19 @@ function renderList() {
     const timeStr = rec.timestamp.toLocaleTimeString();
     const noteCount = rec.events.filter(e => e.type === 'on').length;
     li.innerHTML = `<span>${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
-    li.addEventListener('click', () => {
-      recordingList.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
-      li.classList.add('selected');
-      selectedIndex = recorder.recordings.indexOf(rec);
-    });
+    li.addEventListener('click', () => selectLi(li, rec));
+    if (rec === preselect) selectLi(li, rec);
     recordingList.appendChild(li);
   });
 }
 
-function openJukebox() {
-  renderList();
+function openJukebox(preselect = null) {
+  renderList(preselect);
   overlay.classList.add('open');
 }
+
+const shareBtn = document.getElementById('shareBtn');
+const shareStatus = document.getElementById('shareStatus');
 
 cancelBtn.addEventListener('click', () => overlay.classList.remove('open'));
 overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
@@ -137,6 +166,20 @@ playBtn.addEventListener('click', () => {
   overlay.classList.remove('open');
   recorder.playRecording(recorder.recordings[selectedIndex], allKeys);
 });
+
+shareBtn.addEventListener('click', () => {
+  if (selectedIndex < 0) return;
+  const rec = recorder.recordings[selectedIndex];
+  const { url, truncated, totalNotes, sharedNotes } = makeShareUrl(rec.events);
+  navigator.clipboard.writeText(url);
+  if (truncated) {
+    shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
+  } else {
+    shareStatus.textContent = 'Link copied to clipboard!';
+  }
+  shareStatus.style.display = 'block';
+});
+
 
 // --- Mouse interaction ---
 let mouseKey = null;
@@ -196,6 +239,9 @@ window.addEventListener('keyup', (e) => {
     keysByLabel[label].release();
   }
 });
+
+// --- Open jukebox for shared songs ---
+if (sharedRecording) openJukebox(sharedRecording);
 
 // --- Animation loop ---
 function loop() {

@@ -181,6 +181,7 @@ const heldKeys = new Set();
 
 window.addEventListener('keydown', (e) => {
   if (overlay.classList.contains('open')) return;
+  if (e.metaKey || e.altKey || e.ctrlKey) return;
   const label = e.key.toLowerCase();
   if (keysByLabel[label] && !heldKeys.has(label)) {
     heldKeys.add(label);

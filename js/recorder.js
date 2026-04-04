@@ -42,6 +42,14 @@ export class Recorder {
     this.currentEvents = [];
   }
 
+  delete(rec) {
+    const idx = this.recordings.indexOf(rec);
+    if (idx >= 0) {
+      this.recordings.splice(idx, 1);
+      this._save();
+    }
+  }
+
   recordEvent(type, midi) {
     if (!this.recording) return;
     this.currentEvents.push({ type, midi, time: performance.now() - this.startTime });

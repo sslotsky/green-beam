@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Green Beam Piano</title>
+  <style>
+    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="800" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    class Beam {
+      constructor(x, y, width, height, color, velocity) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+        this.velocity = velocity;
+        this.done = false;
+      }
+
+      update(active) {
+        if (active && !this.done) {
+          this.y -= this.velocity;
+          this.height += this.velocity;
+        } else {
+          this.y -= this.velocity;
+          this.done = true;
+        }
+      }
+
+      isOffScreen() {
+        return this.y + this.height < 0;
+      }
+
+      draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+      }
+    }
+
+    const whiteKeyWidth = 40;
+    const whiteKeyHeight = 150;
+    const blackKeyWidth = 24;
+    const blackKeyHeight = 100;
+    const pianoY = canvas.height - whiteKeyHeight;
+    const numOctaves = 2;
+    const numWhiteKeys = numOctaves * 7;
+    const pianoWidth = numWhiteKeys * whiteKeyWidth;
+    const pianoX = (canvas.width - pianoWidth) / 2;
+
+    // Which white key indices have a black key to their right
+    // In one octave: C(0) D(1) E(2) F(3) G(4) A(5) B(6)
+    // Black keys: C#, D#, F#, G#, A# -> after indices 0,1,3,4,5
+    const blackKeyAfter = new Set([0, 1, 3, 4, 5]);
+
+    class PianoKey {
+      constructor(x, y, width, height, isBlack, label) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.isBlack = isBlack;
+        this.label = label;
+        this.pressed = false;
+        this.beams = [];
+      }
+
+      press() {
+        if (this.pressed) return;
+        this.pressed = true;
+        const beamWidth = blackKeyWidth - 4;
+        const beamX = this.x + (this.width - beamWidth) / 2;
+        const beam = new Beam(beamX, this.y, beamWidth, 0, '#00ff40', 2);
+        this.beams.push(beam);
+      }
+
+      release() {
+        this.pressed = false;
+      }
+
+      update() {
+        this.beams.forEach(beam => beam.update(this.pressed && !beam.done));
+        this.beams = this.beams.filter(b => !b.isOffScreen());
+      }
+
+      drawBeams(ctx) {
+        this.beams.forEach(beam => beam.draw(ctx));
+      }
+
+      draw(ctx) {
+        ctx.fillStyle = this.pressed
+          ? (this.isBlack ? '#555' : '#ccc')
+          : (this.isBlack ? '#222' : '#fff');
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x, this.y, this.width, this.height);
+      }
+
+      containsPoint(px, py) {
+        return px >= this.x && px < this.x + this.width &&
+               py >= this.y && py < this.y + this.height;
+      }
+    }
+
+    // Build keys
+    const whiteKeys = [];
+    const blackKeys = [];
+    const allKeys = [];
+    const keysByLabel = {};
+
+    // Keyboard mapping: bottom two rows for white keys, top of those rows for black
+    const whiteLabels = ['z','x','c','v','b','n','m','a','s','d','f','g','h','j'];
+    const blackLabels = [
+      // octave 1: C# D# _ F# G# A#
+      'q','w', null, 'e','r','t',
+      // octave 2
+      'y','u', null, 'i','o','p'
+    ];
+
+    let whiteIndex = 0;
+    let blackIndex = 0;
+
+    for (let oct = 0; oct < numOctaves; oct++) {
+      for (let i = 0; i < 7; i++) {
+        const x = pianoX + (oct * 7 + i) * whiteKeyWidth;
+        const label = whiteLabels[whiteIndex] || null;
+        const key = new PianoKey(x, pianoY, whiteKeyWidth, whiteKeyHeight, false, label);
+        whiteKeys.push(key);
+        if (label) keysByLabel[label] = key;
+        whiteIndex++;
+
+        if (blackKeyAfter.has(i)) {
+          const bx = x + whiteKeyWidth - blackKeyWidth / 2;
+          const bLabel = blackLabels[blackIndex] || null;
+          const bKey = new PianoKey(bx, pianoY, blackKeyWidth, blackKeyHeight, true, bLabel);
+          blackKeys.push(bKey);
+          if (bLabel) keysByLabel[bLabel] = bKey;
+          blackIndex++;
+        }
+      }
+    }
+
+    // Draw order: white first, then black on top
+    allKeys.push(...whiteKeys, ...blackKeys);
+
+    // Mouse interaction
+    let mouseKey = null;
+
+    function keyAtPoint(px, py) {
+      // Check black keys first (they're on top)
+      for (const key of blackKeys) {
+        if (key.containsPoint(px, py)) return key;
+      }
+      for (const key of whiteKeys) {
+        if (key.containsPoint(px, py)) return key;
+      }
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      mouseKey = keyAtPoint(x, y);
+      if (mouseKey) mouseKey.press();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (e.buttons === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const key = keyAtPoint(x, y);
+      if (key !== mouseKey) {
+        if (mouseKey) mouseKey.release();
+        mouseKey = key;
+        if (mouseKey) mouseKey.press();
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      if (mouseKey) mouseKey.release();
+      mouseKey = null;
+    });
+
+    // Keyboard interaction
+    const heldKeys = new Set();
+
+    window.addEventListener('keydown', (e) => {
+      const label = e.key.toLowerCase();
+      if (keysByLabel[label] && !heldKeys.has(label)) {
+        heldKeys.add(label);
+        keysByLabel[label].press();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const label = e.key.toLowerCase();
+      if (keysByLabel[label]) {
+        heldKeys.delete(label);
+        keysByLabel[label].release();
+      }
+    });
+
+    // Animation loop
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw beams behind the piano
+      allKeys.forEach(key => {
+        key.update();
+        key.drawBeams(ctx);
+      });
+
+      // Draw piano on top
+      whiteKeys.forEach(key => key.draw(ctx));
+      blackKeys.forEach(key => key.draw(ctx));
+
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>

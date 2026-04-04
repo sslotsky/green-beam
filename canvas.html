@@ -4,11 +4,14 @@
   <meta charset="UTF-8">
   <title>Green Beam Piano</title>
   <style>
-    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; gap: 12px; }
+    select { padding: 6px 10px; font-size: 14px; border-radius: 4px; }
   </style>
 </head>
 <body>
+  <select id="instrument"></select>
   <canvas id="c" width="800" height="600"></canvas>
+  <script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.js"></script>
   <script>
     const canvas = document.getElementById('c');
     const ctx = canvas.getContext('2d');
@@ -39,8 +42,12 @@
       }
 
       draw(ctx) {
+        const r = 6;
+        const radii = this.done ? r : [r, r, 0, 0];
+        ctx.beginPath();
+        ctx.roundRect(this.x, this.y, this.width, this.height, radii);
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fill();
       }
     }
 
@@ -59,29 +66,85 @@
     // Black keys: C#, D#, F#, G#, A# -> after indices 0,1,3,4,5
     const blackKeyAfter = new Set([0, 1, 3, 4, 5]);
 
+    // Audio setup
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let instrument = null;
+    const instrumentSelect = document.getElementById('instrument');
+
+    const instruments = [
+      'acoustic_grand_piano', 'bright_acoustic_piano', 'electric_piano_1', 'electric_piano_2',
+      'honkytonk_piano', 'harpsichord', 'clavinet', 'celesta', 'glockenspiel', 'music_box',
+      'vibraphone', 'marimba', 'xylophone', 'tubular_bells', 'dulcimer',
+      'drawbar_organ', 'percussive_organ', 'rock_organ', 'church_organ', 'reed_organ',
+      'accordion', 'harmonica',
+      'acoustic_guitar_nylon', 'acoustic_guitar_steel', 'electric_guitar_jazz',
+      'electric_guitar_clean', 'electric_guitar_muted', 'overdriven_guitar', 'distortion_guitar',
+      'acoustic_bass', 'electric_bass_finger', 'electric_bass_pick', 'fretless_bass',
+      'slap_bass_1', 'synth_bass_1',
+      'violin', 'viola', 'cello', 'contrabass', 'tremolo_strings', 'pizzicato_strings',
+      'orchestral_harp', 'string_ensemble_1', 'string_ensemble_2', 'synth_strings_1',
+      'choir_aahs', 'voice_oohs', 'synth_choir',
+      'trumpet', 'trombone', 'tuba', 'muted_trumpet', 'french_horn', 'brass_section',
+      'soprano_sax', 'alto_sax', 'tenor_sax', 'baritone_sax',
+      'oboe', 'english_horn', 'bassoon', 'clarinet',
+      'piccolo', 'flute', 'recorder', 'pan_flute', 'ocarina',
+      'lead_1_square', 'lead_2_sawtooth',
+      'pad_1_new_age', 'pad_2_warm', 'pad_3_polysynth',
+      'sitar', 'banjo', 'shamisen', 'koto', 'kalimba', 'bagpipe', 'fiddle',
+      'steel_drums', 'taiko_drum', 'timpani',
+    ];
+
+    instruments.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name.replace(/_/g, ' ');
+      instrumentSelect.appendChild(opt);
+    });
+
+    function loadInstrument(name) {
+      instrument = null;
+      Soundfont.instrument(audioContext, name).then(p => { instrument = p; });
+    }
+
+    loadInstrument('acoustic_grand_piano');
+
+    instrumentSelect.addEventListener('change', () => {
+      loadInstrument(instrumentSelect.value);
+    });
+
     class PianoKey {
-      constructor(x, y, width, height, isBlack, label) {
+      constructor(x, y, width, height, isBlack, label, midi) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
         this.isBlack = isBlack;
         this.label = label;
+        this.midi = midi;
         this.pressed = false;
         this.beams = [];
+        this.activeNote = null;
       }
 
       press() {
         if (this.pressed) return;
         this.pressed = true;
-        const beamWidth = blackKeyWidth - 4;
+        const beamWidth = blackKeyWidth - 10;
         const beamX = this.x + (this.width - beamWidth) / 2;
         const beam = new Beam(beamX, this.y, beamWidth, 0, '#00ff40', 2);
         this.beams.push(beam);
+        if (instrument) {
+          audioContext.resume();
+          this.activeNote = instrument.play(this.midi);
+        }
       }
 
       release() {
         this.pressed = false;
+        if (this.activeNote) {
+          this.activeNote.stop();
+          this.activeNote = null;
+        }
       }
 
       update() {
@@ -118,20 +181,29 @@
     // Keyboard mapping: bottom two rows for white keys, top of those rows for black
     const whiteLabels = ['z','x','c','v','b','n','m','a','s','d','f','g','h','j'];
     const blackLabels = [
-      // octave 1: C# D# _ F# G# A#
-      'q','w', null, 'e','r','t',
-      // octave 2
-      'y','u', null, 'i','o','p'
+      // octave 1: C# D# F# G# A#
+      'q','w','e','r','t',
+      // octave 2: C# D# F# G# A#
+      'y','u','i','o','p'
     ];
+
+    // MIDI semitone offsets within an octave for white keys: C D E F G A B
+    const whiteMidiOffsets = [0, 2, 4, 5, 7, 9, 11];
+    // Black key offsets (relative to the white key they follow): C# D# F# G# A#
+    const blackMidiOffsets = [1, 3, 6, 8, 10];
+    const startMidi = 60; // C4
 
     let whiteIndex = 0;
     let blackIndex = 0;
+    let blackMidiIndex = 0;
 
     for (let oct = 0; oct < numOctaves; oct++) {
+      blackMidiIndex = 0;
       for (let i = 0; i < 7; i++) {
         const x = pianoX + (oct * 7 + i) * whiteKeyWidth;
         const label = whiteLabels[whiteIndex] || null;
-        const key = new PianoKey(x, pianoY, whiteKeyWidth, whiteKeyHeight, false, label);
+        const midi = startMidi + oct * 12 + whiteMidiOffsets[i];
+        const key = new PianoKey(x, pianoY, whiteKeyWidth, whiteKeyHeight, false, label, midi);
         whiteKeys.push(key);
         if (label) keysByLabel[label] = key;
         whiteIndex++;
@@ -139,10 +211,12 @@
         if (blackKeyAfter.has(i)) {
           const bx = x + whiteKeyWidth - blackKeyWidth / 2;
           const bLabel = blackLabels[blackIndex] || null;
-          const bKey = new PianoKey(bx, pianoY, blackKeyWidth, blackKeyHeight, true, bLabel);
+          const bMidi = startMidi + oct * 12 + blackMidiOffsets[blackMidiIndex];
+          const bKey = new PianoKey(bx, pianoY, blackKeyWidth, blackKeyHeight, true, bLabel, bMidi);
           blackKeys.push(bKey);
           if (bLabel) keysByLabel[bLabel] = bKey;
           blackIndex++;
+          blackMidiIndex++;
         }
       }
     }

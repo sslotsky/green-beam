@@ -1,9 +1,26 @@
+const STORAGE_KEY = 'green-beam-recordings';
+
 export class Recorder {
   constructor() {
     this.recording = false;
     this.startTime = 0;
     this.currentEvents = [];
-    this.recordings = [];
+    this.recordings = this._load();
+  }
+
+  _load() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      return parsed.map(r => ({ ...r, timestamp: new Date(r.timestamp) }));
+    } catch {
+      return [];
+    }
+  }
+
+  _save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.recordings));
   }
 
   start() {
@@ -20,6 +37,7 @@ export class Recorder {
         timestamp: new Date(),
         events: this.currentEvents,
       });
+      this._save();
     }
     this.currentEvents = [];
   }

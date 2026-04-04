@@ -1,7 +1,7 @@
 import { Beam } from './beam.js';
 
 export class PianoKey {
-  constructor(x, y, width, height, isBlack, label, midi, { beamWidth, audio, recorder }) {
+  constructor(x, y, width, height, isBlack, label, midi, { beamWidth, beamOriginY, audio, recorder }) {
     this.x = x;
     this.y = y;
     this.width = width;
@@ -10,6 +10,7 @@ export class PianoKey {
     this.label = label;
     this.midi = midi;
     this.beamWidth = beamWidth;
+    this.beamOriginY = beamOriginY;
     this.audio = audio;
     this.recorder = recorder;
     this.pressed = false;
@@ -21,7 +22,7 @@ export class PianoKey {
     if (this.pressed) return;
     this.pressed = true;
     const beamX = this.x + (this.width - this.beamWidth) / 2;
-    this.beams.push(new Beam(beamX, this.y, this.beamWidth, 0, '#00ff40', 2));
+    this.beams.push(new Beam(beamX, this.beamOriginY, this.beamWidth, 0, '#00ff40', 2));
     this.activeNote = this.audio.play(this.midi);
     this.recorder.recordEvent('on', this.midi);
   }
@@ -41,11 +42,8 @@ export class PianoKey {
     this.beams = this.beams.filter(b => !b.isOffScreen());
   }
 
-  drawBeams(ctx) {
-    this.beams.forEach(beam => beam.draw(ctx));
-  }
-
   draw(ctx) {
+    this.beams.forEach(beam => beam.draw(ctx));
     const { x, y, width, height, isBlack, pressed } = this;
     const r = 4;
 

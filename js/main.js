@@ -11,10 +11,15 @@ const whiteKeyWidth = 36;
 const whiteKeyHeight = 150;
 const blackKeyWidth = 22;
 const blackKeyHeight = 100;
-const pianoY = canvas.height - whiteKeyHeight;
+const bodyPadding = 12;
+const bodyTop = canvas.height - whiteKeyHeight - bodyPadding * 2;
+const pianoY = bodyTop + bodyPadding;
 const numOctaves = 3;
 const pianoWidth = numOctaves * 7 * whiteKeyWidth;
 const pianoX = (canvas.width - pianoWidth) / 2 + 30;
+const bodyX = pianoX - bodyPadding;
+const bodyWidth = pianoWidth + bodyPadding * 2;
+const bodyHeight = canvas.height - bodyTop;
 const blackKeyAfter = new Set([0, 1, 3, 4, 5]);
 
 // --- Services ---
@@ -70,7 +75,7 @@ for (let oct = 0; oct < numOctaves; oct++) {
     const x = pianoX + (oct * 7 + i) * whiteKeyWidth;
     const label = whiteLabels[whiteIndex] || null;
     const midi = startMidi + oct * 12 + whiteMidiOffsets[i];
-    const key = new PianoKey(x, pianoY, whiteKeyWidth, whiteKeyHeight, false, label, midi, { beamWidth, audio, recorder });
+    const key = new PianoKey(x, pianoY, whiteKeyWidth, whiteKeyHeight, false, label, midi, { beamWidth, beamOriginY: bodyTop, audio, recorder });
     whiteKeys.push(key);
     if (label) keysByLabel[label] = key;
     whiteIndex++;
@@ -79,7 +84,7 @@ for (let oct = 0; oct < numOctaves; oct++) {
       const bx = x + whiteKeyWidth - blackKeyWidth / 2;
       const bLabel = blackLabels[blackIndex] || null;
       const bMidi = startMidi + oct * 12 + blackMidiOffsets[blackMidiIndex];
-      const bKey = new PianoKey(bx, pianoY, blackKeyWidth, blackKeyHeight, true, bLabel, bMidi, { beamWidth, audio, recorder });
+      const bKey = new PianoKey(bx, pianoY, blackKeyWidth, blackKeyHeight, true, bLabel, bMidi, { beamWidth, beamOriginY: bodyTop, audio, recorder });
       blackKeys.push(bKey);
       if (bLabel) keysByLabel[bLabel] = bKey;
       blackIndex++;
@@ -195,10 +200,35 @@ window.addEventListener('keyup', (e) => {
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  allKeys.forEach(key => {
-    key.update();
-    key.drawBeams(ctx);
-  });
+  allKeys.forEach(key => key.update());
+
+  // Keyboard body — wood finish
+  const bodyGrad = ctx.createLinearGradient(bodyX, bodyTop, bodyX, bodyTop + bodyHeight);
+  bodyGrad.addColorStop(0, '#5C3317');
+  bodyGrad.addColorStop(0.15, '#6B3A20');
+  bodyGrad.addColorStop(0.5, '#7A4428');
+  bodyGrad.addColorStop(0.85, '#6B3A20');
+  bodyGrad.addColorStop(1, '#4A2810');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(bodyX, bodyTop, bodyWidth, bodyHeight, [8, 8, 0, 0]);
+  ctx.fill();
+  // Wood grain lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    const gy = bodyTop + 3 + i * 3;
+    ctx.beginPath();
+    ctx.moveTo(bodyX + 4, gy);
+    ctx.lineTo(bodyX + bodyWidth - 4, gy);
+    ctx.stroke();
+  }
+  // Edge highlight and border
+  ctx.strokeStyle = '#8B5E3C';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(bodyX, bodyTop, bodyWidth, bodyHeight, [8, 8, 0, 0]);
+  ctx.stroke();
 
   whiteKeys.forEach(key => key.draw(ctx));
   blackKeys.forEach(key => key.draw(ctx));

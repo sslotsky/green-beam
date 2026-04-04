@@ -59,8 +59,8 @@ const blackKeys = [];
 const allKeys = [];
 const keysByLabel = {};
 
-const whiteLabels = ['z','x','c','v','b','n','m','a','s','d','f','g','h','j','1','2','3','4','5','6','7'];
-const blackLabels = ['q','w','e','r','t','y','u','i','o','p','8','9','0','-','='];
+const whiteLabels = ['z','x','c','v','b','n','m','a','s','d','f','g','h','j','q','w','e','r','t','y','u'];
+const blackLabels = ['1','2','3','4','5','6','7','8','9','0','-','=','[',']','\\'];
 const whiteMidiOffsets = [0, 2, 4, 5, 7, 9, 11];
 const blackMidiOffsets = [1, 3, 6, 8, 10];
 const startMidi = 48; // C3

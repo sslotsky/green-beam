@@ -36,11 +36,12 @@ export class Recorder {
     return events.length > 0 ? events : null;
   }
 
-  save(name, events) {
+  save(name, events, instrument) {
     this.recordings.push({
       name,
       timestamp: new Date(),
       events,
+      instrument,
     });
     this._save();
   }

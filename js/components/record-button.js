@@ -20,7 +20,7 @@ export class RecordButton extends HTMLElement {
       this.dot.style.background = '#cc0000';
       this.dot.style.boxShadow = 'none';
       if (events) {
-        this.app.querySelector('name-song-modal').open(events);
+        this.app.querySelector('name-song-modal').open(events, this.app.audio.currentInstrument);
       }
     } else {
       recorder.start();

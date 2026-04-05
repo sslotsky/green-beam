@@ -30,6 +30,7 @@ export class PianoApp extends HTMLElement {
           name: displayName,
           timestamp: new Date(),
           events: shared.events,
+          instrument: shared.instrument,
           hash,
           shared: true,
         };
@@ -39,8 +40,9 @@ export class PianoApp extends HTMLElement {
       history.replaceState(null, '', location.pathname);
     }
 
-    // Load default instrument
-    this.audio.load('acoustic_grand_piano');
+    // Load instrument (shared song's instrument or default)
+    const initialInstrument = (shared && shared.instrument) || 'acoustic_grand_piano';
+    this.audio.load(initialInstrument);
 
     // Start animation loop
     this._animating = true;

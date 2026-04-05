@@ -29,6 +29,7 @@ export class Audio {
 
   load(name) {
     this.instrument = null;
+    this.currentInstrument = name;
     return Soundfont.instrument(this.context, name).then(p => { this.instrument = p; });
   }
 

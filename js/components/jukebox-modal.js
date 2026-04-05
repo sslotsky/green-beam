@@ -54,9 +54,11 @@ export class JukeboxModal extends HTMLElement {
     this.querySelector('.play-btn').addEventListener('click', () => {
       if (this._activeTab === 'mine') {
         if (this._selectedIndex < 0) return;
+        const rec = this.app.recorder.recordings[this._selectedIndex];
+        if (rec.instrument) this.app.audio.load(rec.instrument);
         this.close();
         const keyboard = this.app.querySelector('piano-keyboard');
-        this.app.recorder.playRecording(this.app.recorder.recordings[this._selectedIndex], keyboard.allKeys);
+        this.app.recorder.playRecording(rec, keyboard.allKeys);
       } else {
         if (!this._selectedCommunityId) return;
         this._playCommunity(this._selectedCommunityId);
@@ -70,7 +72,7 @@ export class JukeboxModal extends HTMLElement {
       this.shareStatus.textContent = 'Creating link...';
       this.shareStatus.style.display = 'block';
       try {
-        const shortUrl = await shareSong(encoded, rec.name);
+        const shortUrl = await shareSong(encoded, rec.name, rec.instrument);
         await navigator.clipboard.writeText(shortUrl);
         if (truncated) {
           this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
@@ -215,9 +217,10 @@ export class JukeboxModal extends HTMLElement {
       const events = decode(data);
       if (!events) return;
 
+      if (instrument) await this.app.audio.load(instrument);
       this.close();
       const keyboard = this.app.querySelector('piano-keyboard');
-      this.app.recorder.playRecording({ name, events }, keyboard.allKeys);
+      this.app.recorder.playRecording({ name, events, instrument }, keyboard.allKeys);
     } catch {
       this.shareStatus.textContent = 'Failed to load song.';
       this.shareStatus.style.display = 'block';

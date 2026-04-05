@@ -31,8 +31,9 @@ export class NameSongModal extends HTMLElement {
     this.input.addEventListener('keyup', (e) => e.stopPropagation());
   }
 
-  open(events) {
+  open(events, instrument) {
     this._pendingEvents = events;
+    this._instrument = instrument;
     const defaultName = `Song ${new Date().toLocaleTimeString()}`;
     this.input.value = defaultName;
     this.overlay.classList.add('open');
@@ -48,7 +49,7 @@ export class NameSongModal extends HTMLElement {
   _save() {
     if (!this._pendingEvents) return;
     const name = this.input.value.trim() || `Song ${new Date().toLocaleTimeString()}`;
-    this.app.recorder.save(name, this._pendingEvents);
+    this.app.recorder.save(name, this._pendingEvents, this._instrument);
     this.close();
   }
 }

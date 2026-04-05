@@ -25,11 +25,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS songs (
 )`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_data ON songs(data)`);
 
-// Migrate: add name column if missing
-try {
-  db.exec(`ALTER TABLE songs ADD COLUMN name TEXT DEFAULT ''`);
-} catch {
-  // Column already exists
+// Migrate: add columns if missing
+for (const col of ['name TEXT DEFAULT \'\'', 'instrument TEXT DEFAULT \'\'']) {
+  try { db.exec(`ALTER TABLE songs ADD COLUMN ${col}`); } catch {}
 }
 
 // Migrate from old shortlinks.db if it exists
@@ -51,19 +49,19 @@ function generateId(len = 6) {
   return id;
 }
 
-const insertStmt = db.prepare('INSERT INTO songs (id, data, name) VALUES (?, ?, ?)');
+const insertStmt = db.prepare('INSERT INTO songs (id, data, name, instrument) VALUES (?, ?, ?, ?)');
 const findByData = db.prepare('SELECT id FROM songs WHERE data = ?');
-const findById = db.prepare('SELECT data, name FROM songs WHERE id = ?');
+const findById = db.prepare('SELECT data, name, instrument FROM songs WHERE id = ?');
 const touchStmt = db.prepare('UPDATE songs SET last_accessed = unixepoch() WHERE id = ?');
 const expireStmt = db.prepare('DELETE FROM songs WHERE last_accessed < unixepoch() - ?');
 const recentStmt = db.prepare('SELECT id, name, created_at FROM songs WHERE name != \'\' ORDER BY created_at DESC LIMIT 20');
 
-function saveSong(data, name) {
+function saveSong(data, name, instrument) {
   const existing = findByData.get(data);
   if (existing) return existing.id;
   let id;
   do { id = generateId(); } while (findById.get(id));
-  insertStmt.run(id, data, name);
+  insertStmt.run(id, data, name, instrument);
   return id;
 }
 
@@ -122,7 +120,7 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       try {
-        const { data, name } = JSON.parse(body);
+        const { data, name, instrument } = JSON.parse(body);
         if (!data || typeof data !== 'string') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'data required' }));
@@ -134,7 +132,8 @@ const server = http.createServer((req, res) => {
           return;
         }
         const songName = typeof name === 'string' ? name.slice(0, 100) : '';
-        const id = saveSong(data, songName);
+        const songInstrument = typeof instrument === 'string' ? instrument.slice(0, 100) : '';
+        const id = saveSong(data, songName, songInstrument);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ id }));
       } catch {
@@ -160,7 +159,7 @@ const server = http.createServer((req, res) => {
     if (row) {
       touchStmt.run(dataMatch[1]);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: row.data, name: row.name }));
+      res.end(JSON.stringify({ data: row.data, name: row.name, instrument: row.instrument }));
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'not found' }));
@@ -175,7 +174,8 @@ const server = http.createServer((req, res) => {
     if (row) {
       touchStmt.run(songMatch[1]);
       const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
-      res.writeHead(302, { Location: `/#${row.data}${nameParam}` });
+      const instrParam = row.instrument ? `&instrument=${encodeURIComponent(row.instrument)}` : '';
+      res.writeHead(302, { Location: `/#${row.data}${nameParam}${instrParam}` });
       res.end();
     } else {
       res.writeHead(404);

@@ -4,6 +4,7 @@ const { Hono } = require('hono');
 const { html, raw } = require('hono/html');
 const { serve } = require('@hono/node-server');
 const Database = require('better-sqlite3');
+const { migrate } = require('./migrate.js');
 const { generateOgImage } = require('./og.js');
 
 // --- Config ---
@@ -15,32 +16,7 @@ const EXPIRY_DAYS = 90;
 // --- Songs DB ---
 const dbDir = process.env.DATA_DIR || __dirname;
 const db = new Database(path.join(dbDir, 'songs.db'));
-db.exec(`CREATE TABLE IF NOT EXISTS songs (
-  id TEXT PRIMARY KEY,
-  data TEXT NOT NULL,
-  created_at INTEGER DEFAULT (unixepoch()),
-  last_accessed INTEGER DEFAULT (unixepoch()),
-  name TEXT DEFAULT '',
-  instrument TEXT DEFAULT ''
-)`);
-db.exec(`CREATE INDEX IF NOT EXISTS idx_data ON songs(data)`);
-
-// Migrate: add columns if missing
-for (const col of ["name TEXT DEFAULT ''", "instrument TEXT DEFAULT ''"]) {
-  try { db.exec(`ALTER TABLE songs ADD COLUMN ${col}`); } catch {}
-}
-
-// Migrate from old shortlinks.db if it exists
-const oldDbPath = path.join(dbDir, 'shortlinks.db');
-if (fs.existsSync(oldDbPath)) {
-  const oldDb = new Database(oldDbPath);
-  const rows = oldDb.prepare('SELECT code, hash FROM links').all();
-  const insert = db.prepare('INSERT OR IGNORE INTO songs (id, data) VALUES (?, ?)');
-  for (const row of rows) insert.run(row.code, row.hash);
-  oldDb.close();
-  fs.unlinkSync(oldDbPath);
-  console.log(`Migrated ${rows.length} songs from shortlinks.db`);
-}
+migrate(db);
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 function generateId(len = 6) {

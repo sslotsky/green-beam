@@ -58,10 +58,22 @@ export class Recorder {
     this.currentEvents.push({ type, midi, time: performance.now() - this.startTime });
   }
 
+  get progress() {
+    if (!this._playing || !this._playbackDuration) return 0;
+    const elapsed = performance.now() - this._playbackStart;
+    return Math.min(elapsed / this._playbackDuration, 1);
+  }
+
+  get playing() {
+    return this._playing;
+  }
+
   playRecording(rec, allKeys) {
     this.stopPlayback(allKeys);
     this._playing = true;
     this._timeouts = [];
+    this._playbackStart = performance.now();
+    this._playbackDuration = rec.events[rec.events.length - 1].time + 100;
 
     const keysByMidi = {};
     allKeys.forEach(k => { keysByMidi[k.midi] = k; });
@@ -76,11 +88,10 @@ export class Recorder {
       this._timeouts.push(tid);
     }
 
-    const duration = rec.events[rec.events.length - 1].time + 100;
     this._timeouts.push(setTimeout(() => {
       this._playing = false;
       allKeys.forEach(k => { if (k.pressed) k.release(); });
-    }, duration));
+    }, this._playbackDuration));
   }
 
   stopPlayback(allKeys) {

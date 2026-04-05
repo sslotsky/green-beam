@@ -34,8 +34,9 @@ export class PianoKeyboard extends HTMLElement {
     const pianoX = (canvas.width - pianoWidth) / 2 + offsetX;
     this.bodyX = pianoX - BODY_PADDING;
     this.bodyWidth = pianoWidth + BODY_PADDING * 2;
-    this.bodyTop = canvas.height - WHITE_KEY_HEIGHT - BODY_PADDING * 2;
-    this.bodyHeight = canvas.height - this.bodyTop;
+    this.progressBarSpace = 14;
+    this.bodyTop = canvas.height - WHITE_KEY_HEIGHT - BODY_PADDING * 2 - this.progressBarSpace;
+    this.bodyHeight = WHITE_KEY_HEIGHT + BODY_PADDING * 2;
     const pianoY = this.bodyTop + BODY_PADDING;
 
     let whiteIndex = 0;
@@ -158,6 +159,29 @@ export class PianoKeyboard extends HTMLElement {
     // Keys
     this.whiteKeys.forEach(key => key.draw(ctx));
     this.blackKeys.forEach(key => key.draw(ctx));
+
+    // Playback progress bar
+    const { recorder } = this.app;
+    if (recorder.playing) {
+      const barHeight = 4;
+      const barY = bodyTop + bodyHeight + 6;
+      const progress = recorder.progress;
+
+      // Track
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.roundRect(bodyX, barY, bodyWidth, barHeight, 2);
+      ctx.fill();
+
+      // Fill
+      if (progress > 0) {
+        const fillWidth = bodyWidth * progress;
+        ctx.fillStyle = '#00ff40';
+        ctx.beginPath();
+        ctx.roundRect(bodyX, barY, fillWidth, barHeight, 2);
+        ctx.fill();
+      }
+    }
   }
 }
 

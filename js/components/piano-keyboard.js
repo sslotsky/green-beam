@@ -74,18 +74,14 @@ export class PianoKeyboard extends HTMLElement {
     // Mouse interaction
     const canvasEl = canvas;
     canvasEl.addEventListener('mousedown', (e) => {
-      const rect = canvasEl.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = this.app.canvasCoords(e);
       this._mouseKey = this._keyAtPoint(x, y);
       if (this._mouseKey) this._mouseKey.press();
     });
 
     canvasEl.addEventListener('mousemove', (e) => {
       if (e.buttons === 0) return;
-      const rect = canvasEl.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = this.app.canvasCoords(e);
       const key = this._keyAtPoint(x, y);
       if (key !== this._mouseKey) {
         if (this._mouseKey) this._mouseKey.release();

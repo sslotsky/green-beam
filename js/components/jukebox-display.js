@@ -16,18 +16,14 @@ export class JukeboxDisplay extends HTMLElement {
     this.jukebox = new Jukebox(x, y, w, h);
 
     canvas.addEventListener('mousedown', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
+      const { x: px, y: py } = this.app.canvasCoords(e);
       if (this.jukebox.containsPoint(px, py)) {
         this.dispatchEvent(new CustomEvent('jukebox-click', { bubbles: true }));
       }
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
+      const { x: px, y: py } = this.app.canvasCoords(e);
       this._hover = this.jukebox.containsPoint(px, py);
       this.jukebox.hover = this._hover;
       canvas.style.cursor = this._hover ? 'pointer' : 'default';

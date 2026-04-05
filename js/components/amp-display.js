@@ -13,18 +13,14 @@ export class AmpDisplay extends HTMLElement {
     this.h = 140;
 
     canvas.addEventListener('mousedown', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
+      const { x: px, y: py } = this.app.canvasCoords(e);
       if (this.containsPoint(px, py)) {
         this.dispatchEvent(new CustomEvent('amp-click', { bubbles: true }));
       }
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
+      const { x: px, y: py } = this.app.canvasCoords(e);
       const wasHover = this.hover;
       this.hover = this.containsPoint(px, py);
       if (this.hover && !wasHover) canvas.style.cursor = 'pointer';

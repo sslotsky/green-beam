@@ -145,7 +145,7 @@ const server = http.createServer((req, res) => {
   }
 
   // GET /songs/recent — community songs
-  if (req.method === 'GET' && req.url === '/songs/recent') {
+  if (req.method === 'GET' && req.url.startsWith('/songs/recent')) {
     const rows = recentStmt.all();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows));
@@ -153,7 +153,7 @@ const server = http.createServer((req, res) => {
   }
 
   // GET /songs/:id/data — fetch song data as JSON
-  const dataMatch = req.url.match(/^\/songs\/([A-Za-z0-9]+)\/data$/);
+  const dataMatch = req.url.match(/^\/songs\/([A-Za-z0-9]+)\/data(?:\?.*)?$/);
   if (dataMatch) {
     const row = findById.get(dataMatch[1]);
     if (row) {
@@ -168,7 +168,7 @@ const server = http.createServer((req, res) => {
   }
 
   // GET /songs/:id or /s/:id — redirect to song
-  const songMatch = req.url.match(/^\/(?:songs|s)\/([A-Za-z0-9]+)$/);
+  const songMatch = req.url.match(/^\/(?:songs|s)\/([A-Za-z0-9]+)(?:\?.*)?$/);
   if (songMatch) {
     const row = findById.get(songMatch[1]);
     if (row) {

@@ -185,7 +185,8 @@ const server = http.createServer((req, res) => {
   }
 
   // Static files
-  const filePath = req.url === '/' ? '/canvas.html' : req.url;
+  const urlPath = req.url.split('?')[0];
+  const filePath = urlPath === '/' ? '/canvas.html' : urlPath;
   const fullPath = path.join(__dirname, filePath);
   const ext = path.extname(fullPath);
 

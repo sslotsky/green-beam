@@ -211,7 +211,7 @@ export class JukeboxModal extends HTMLElement {
     try {
       const res = await fetch(`/songs/${id}/data`);
       if (!res.ok) throw new Error();
-      const { data, name } = await res.json();
+      const { data, name, instrument } = await res.json();
 
       const { decode } = await import('../sharing.js');
       const events = decode(data);

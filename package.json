@@ -4,8 +4,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "build": "node build.js",
+    "dev": "npm run build && nodemon --watch src --ext js,jsx,html,svg,sql --exec 'npm run build && DATA_DIR=. node dist/server.js'",
+    "start": "node dist/server.js"
   },
   "repository": {
     "type": "git",
@@ -23,7 +24,11 @@
     "@hono/node-server": "^1.19.12",
     "@resvg/resvg-js": "^2.6.2",
     "better-sqlite3": "^12.8.0",
+    "esbuild": "^0.28.0",
     "hono": "^4.12.10",
     "satori": "^0.26.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

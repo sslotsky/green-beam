@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Hono } = require('hono');
-const { serveStatic } = require('hono/serve-static');
+const { html, raw } = require('hono/html');
 const { serve } = require('@hono/node-server');
 const Database = require('better-sqlite3');
 
@@ -136,24 +136,42 @@ app.get('/songs/:id/data', (c) => {
   return c.json({ data: row.data, name: row.name, instrument: row.instrument });
 });
 
-// GET /songs/:id or /s/:id — redirect
-app.get('/songs/:id', (c) => {
-  const row = findById.get(c.req.param('id'));
-  if (!row) return c.notFound();
-  touchStmt.run(c.req.param('id'));
-  const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
-  const instrParam = row.instrument ? `&instrument=${encodeURIComponent(row.instrument)}` : '';
-  return c.redirect(`/#${row.data}${nameParam}${instrParam}`);
-});
+// GET /songs/:id or /s/:id — serve app with OG tags
+const baseHtml = fs.readFileSync(path.join(__dirname, 'canvas.html'), 'utf-8');
 
-app.get('/s/:id', (c) => {
+function songPage(row, url) {
+  const songTitle = row.name || 'Shared Song';
+  const instrument = row.instrument ? row.instrument.replace(/_/g, ' ') : 'piano';
+  const description = `Listen to "${songTitle}" played on ${instrument} — made with Lumitone`;
+  const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
+  const instrParam = row.instrument ? `&instrument=${encodeURIComponent(row.instrument)}` : '';
+  const hash = `${row.data}${nameParam}${instrParam}`;
+
+  const ogTags = html`
+    <meta property="og:title" content="${songTitle} — Lumitone" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:type" content="music.song" />
+    <meta property="og:url" content="${url}" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${songTitle} — Lumitone" />
+    <meta name="twitter:description" content="${description}" />
+  `;
+  const hashScript = html`<script>if(!location.hash)location.hash=${JSON.stringify(hash)};</script>`;
+
+  return baseHtml
+    .replace('</head>', `${ogTags}</head>`)
+    .replace('</body>', `${hashScript}</body>`);
+}
+
+function serveSongPage(c) {
   const row = findById.get(c.req.param('id'));
   if (!row) return c.notFound();
   touchStmt.run(c.req.param('id'));
-  const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
-  const instrParam = row.instrument ? `&instrument=${encodeURIComponent(row.instrument)}` : '';
-  return c.redirect(`/#${row.data}${nameParam}${instrParam}`);
-});
+  return c.html(songPage(row, c.req.url));
+}
+
+app.get('/songs/:id', serveSongPage);
+app.get('/s/:id', serveSongPage);
 
 // Static files
 app.get('/', (c) => {

@@ -108,15 +108,15 @@ export function makeShareUrl(events) {
   return { url, encoded, ...result };
 }
 
-export async function shortenUrl(encoded) {
-  const res = await fetch('/s', {
+export async function shareSong(encoded) {
+  const res = await fetch('/songs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hash: encoded }),
+    body: JSON.stringify({ data: encoded }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  return `${location.origin}/s/${data.code}`;
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error);
+  return `${location.origin}/songs/${result.id}`;
 }
 
 export function loadFromHash() {

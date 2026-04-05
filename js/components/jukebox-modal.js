@@ -1,4 +1,4 @@
-import { makeShareUrl, shortenUrl } from '../sharing.js';
+import { makeShareUrl, shareSong } from '../sharing.js';
 import { html } from '../html.js';
 
 export class JukeboxModal extends HTMLElement {
@@ -45,7 +45,7 @@ export class JukeboxModal extends HTMLElement {
       this.shareStatus.textContent = 'Creating link...';
       this.shareStatus.style.display = 'block';
       try {
-        const shortUrl = await shortenUrl(encoded);
+        const shortUrl = await shareSong(encoded);
         await navigator.clipboard.writeText(shortUrl);
         if (truncated) {
           this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;

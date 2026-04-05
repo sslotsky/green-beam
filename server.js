@@ -189,6 +189,11 @@ app.get('/', (c) => {
   return c.html(html);
 });
 
+app.get('/og-home.png', (c) => {
+  const png = fs.readFileSync(path.join(__dirname, 'og-home.png'));
+  return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' } });
+});
+
 app.get('/js/*', (c) => {
   const filePath = path.join(__dirname, c.req.path);
   if (!fs.existsSync(filePath)) return c.notFound();

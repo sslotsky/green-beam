@@ -3,7 +3,7 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --production
-COPY server.js og.js migrate.js canvas.html ./
+COPY server.js og.js migrate.js canvas.html og-home.png ./
 COPY migrations/ migrations/
 COPY js/ js/
 COPY fonts/ fonts/

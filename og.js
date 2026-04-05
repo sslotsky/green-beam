@@ -51,7 +51,7 @@ function buildVisualization(events) {
 }
 
 async function generateOgImage(songTitle, instrument, events) {
-  const displayInstrument = instrument ? instrument.replace(/_/g, ' ') : 'piano';
+  const displayInstrument = instrument ? instrument.replace(/_/g, ' ') : null;
   const bars = buildVisualization(events);
 
   const satori = await getSatori();
@@ -85,14 +85,14 @@ async function generateOgImage(songTitle, instrument, events) {
               children: songTitle,
             },
           },
-          {
+          ...(displayInstrument ? [{
             type: 'div',
             props: {
               style: { color: '#888', fontSize: '24px', marginBottom: '40px' },
               children: displayInstrument,
             },
-          },
-          {
+          }] : []),
+          ...(bars.length > 0 ? [{
             type: 'div',
             props: {
               style: {
@@ -102,9 +102,9 @@ async function generateOgImage(songTitle, instrument, events) {
                 alignItems: 'flex-end',
                 gap: '3px',
               },
-              children: bars.length > 0 ? bars : '',
+              children: bars,
             },
-          },
+          }] : []),
         ],
       },
     },

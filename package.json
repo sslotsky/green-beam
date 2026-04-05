@@ -21,7 +21,9 @@
   "homepage": "https://github.com/sslotsky/green-beam#readme",
   "dependencies": {
     "@hono/node-server": "^1.19.12",
+    "@resvg/resvg-js": "^2.6.2",
     "better-sqlite3": "^12.8.0",
-    "hono": "^4.12.10"
+    "hono": "^4.12.10",
+    "satori": "^0.26.0"
   }
 }

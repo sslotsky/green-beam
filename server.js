@@ -4,6 +4,7 @@ const { Hono } = require('hono');
 const { html, raw } = require('hono/html');
 const { serve } = require('@hono/node-server');
 const Database = require('better-sqlite3');
+const { generateOgImage } = require('./og.js');
 
 // --- Config ---
 const MAX_DATA_LENGTH = 8192;
@@ -136,25 +137,57 @@ app.get('/songs/:id/data', (c) => {
   return c.json({ data: row.data, name: row.name, instrument: row.instrument });
 });
 
+// Decode binary event data (mirrors client-side sharing.js)
+function decodeEvents(base64url) {
+  try {
+    const padded = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const buf = Buffer.from(padded, 'base64');
+    if (buf[0] !== 1) return [];
+    const events = [];
+    for (let i = 1; i + 4 <= buf.length; i += 4) {
+      const type = (buf[i] >> 7) === 1 ? 'on' : 'off';
+      const midi = buf[i] & 0x7F;
+      const time = (buf[i + 1] << 16) | (buf[i + 2] << 8) | buf[i + 3];
+      events.push({ type, midi, time });
+    }
+    return events;
+  } catch { return []; }
+}
+
+// GET /songs/:id/og.png — dynamic OG image
+app.get('/songs/:id/og.png', async (c) => {
+  const row = findById.get(c.req.param('id'));
+  if (!row) return c.notFound();
+  const songTitle = row.name || 'Shared Song';
+  const events = decodeEvents(row.data);
+  const png = await generateOgImage(songTitle, row.instrument, events);
+  return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
+});
+
 // GET /songs/:id or /s/:id — serve app with OG tags
 const baseHtml = fs.readFileSync(path.join(__dirname, 'canvas.html'), 'utf-8');
 
-function songPage(row, url) {
+function songPage(row, url, id) {
   const songTitle = row.name || 'Shared Song';
   const instrument = row.instrument ? row.instrument.replace(/_/g, ' ') : 'piano';
   const description = `Listen to "${songTitle}" played on ${instrument} — made with Lumitone`;
   const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
   const instrParam = row.instrument ? `&instrument=${encodeURIComponent(row.instrument)}` : '';
   const hash = `${row.data}${nameParam}${instrParam}`;
+  const ogImageUrl = new URL(`/songs/${id}/og.png`, url).href;
 
   const ogTags = html`
     <meta property="og:title" content="${songTitle} — Lumitone" />
     <meta property="og:description" content="${description}" />
     <meta property="og:type" content="music.song" />
+    <meta property="og:image" content="${ogImageUrl}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="${url}" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${songTitle} — Lumitone" />
     <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${ogImageUrl}" />
   `;
   const hashScript = html`<script>if(!location.hash)location.hash=${JSON.stringify(hash)};</script>`;
 
@@ -164,10 +197,11 @@ function songPage(row, url) {
 }
 
 function serveSongPage(c) {
-  const row = findById.get(c.req.param('id'));
+  const id = c.req.param('id');
+  const row = findById.get(id);
   if (!row) return c.notFound();
-  touchStmt.run(c.req.param('id'));
-  return c.html(songPage(row, c.req.url));
+  touchStmt.run(id);
+  return c.html(songPage(row, c.req.url, id));
 }
 
 app.get('/songs/:id', serveSongPage);

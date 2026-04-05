@@ -1,5 +1,8 @@
 FROM node:20-alpine
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --production
 COPY server.js canvas.html ./
 COPY js/ js/
 EXPOSE 3000

@@ -105,7 +105,17 @@ export function makeShareUrl(events) {
   const result = truncateEvents(events);
   const encoded = encode(result.events);
   const url = `${location.origin}${location.pathname}#${encoded}`;
-  return { url, ...result };
+  return { url, encoded, ...result };
+}
+
+export async function shortenUrl(encoded) {
+  const res = await fetch('/s', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hash: encoded }),
+  });
+  const { code } = await res.json();
+  return `${location.origin}/s/${code}`;
 }
 
 export function loadFromHash() {

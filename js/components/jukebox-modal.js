@@ -1,4 +1,4 @@
-import { makeShareUrl } from '../sharing.js';
+import { makeShareUrl, shortenUrl } from '../sharing.js';
 import { html } from '../html.js';
 
 export class JukeboxModal extends HTMLElement {
@@ -38,17 +38,23 @@ export class JukeboxModal extends HTMLElement {
       this.app.recorder.playRecording(this.app.recorder.recordings[this._selectedIndex], keyboard.allKeys);
     });
 
-    this.querySelector('.share-btn').addEventListener('click', () => {
+    this.querySelector('.share-btn').addEventListener('click', async () => {
       if (this._selectedIndex < 0) return;
       const rec = this.app.recorder.recordings[this._selectedIndex];
-      const { url, truncated, totalNotes, sharedNotes } = makeShareUrl(rec.events);
-      navigator.clipboard.writeText(url);
-      if (truncated) {
-        this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
-      } else {
-        this.shareStatus.textContent = 'Link copied to clipboard!';
-      }
+      const { encoded, truncated, totalNotes, sharedNotes } = makeShareUrl(rec.events);
+      this.shareStatus.textContent = 'Creating link...';
       this.shareStatus.style.display = 'block';
+      try {
+        const shortUrl = await shortenUrl(encoded);
+        await navigator.clipboard.writeText(shortUrl);
+        if (truncated) {
+          this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
+        } else {
+          this.shareStatus.textContent = 'Link copied to clipboard!';
+        }
+      } catch {
+        this.shareStatus.textContent = 'Failed to create link.';
+      }
     });
 
     // Listen for jukebox click

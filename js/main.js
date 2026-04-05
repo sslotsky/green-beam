@@ -7,3 +7,4 @@ import './components/midi-modal.js';
 import './components/instrument-selector.js';
 import './components/record-button.js';
 import './components/name-song-modal.js';
+import './components/loading-indicator.js';

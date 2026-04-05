@@ -7,6 +7,7 @@ export class JukeboxModal extends HTMLElement {
     this._selectedIndex = -1;
     this._selectedCommunityId = null;
     this._activeTab = 'mine';
+    this._communityCache = null;
   }
 
   connectedCallback() {
@@ -20,6 +21,7 @@ export class JukeboxModal extends HTMLElement {
             <button class="tab-btn" data-tab="community">Community</button>
           </div>
           <ul class="recording-list"></ul>
+          <loading-indicator class="empty" message="Loading..."></loading-indicator>
           <div class="share-status" style="font-size:12px;color:#888;display:none;"></div>
           <div class="actions">
             <button class="share-btn">Share</button>
@@ -32,6 +34,7 @@ export class JukeboxModal extends HTMLElement {
 
     this.overlay = this.querySelector('.overlay');
     this.list = this.querySelector('.recording-list');
+    this.loading = this.querySelector('loading-indicator');
     this.shareStatus = this.querySelector('.share-status');
     this.shareBtn = this.querySelector('.share-btn');
 
@@ -90,6 +93,7 @@ export class JukeboxModal extends HTMLElement {
 
   open(preselect = null) {
     this._activeTab = 'mine';
+    this._communityCache = null;
     this.querySelectorAll('.tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.tab === 'mine');
     });
@@ -157,34 +161,46 @@ export class JukeboxModal extends HTMLElement {
     });
   }
 
+  _renderCommunitySongs(songs) {
+    this.list.innerHTML = '';
+    if (songs.length === 0) {
+      this.list.innerHTML = html`<li class="empty">No community songs yet. Be the first to share!</li>`;
+      return;
+    }
+    songs.forEach(song => {
+      const li = document.createElement('li');
+      const date = new Date(song.created_at * 1000);
+      const dateStr = date.toLocaleDateString();
+      li.innerHTML = html`<span>${song.name || 'Untitled'}</span><span style="color:#888">${dateStr}</span>`;
+      li.addEventListener('click', () => {
+        this.list.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
+        li.classList.add('selected');
+        this._selectedCommunityId = song.id;
+      });
+      this.list.appendChild(li);
+    });
+  }
+
   async _renderCommunityList() {
-    this.list.innerHTML = html`<li class="empty">Loading...</li>`;
     this._selectedCommunityId = null;
     this.shareStatus.style.display = 'none';
+
+    if (this._communityCache) {
+      this._renderCommunitySongs(this._communityCache);
+      return;
+    }
+
+    this.list.innerHTML = '';
+    this.loading.start();
 
     try {
       const res = await fetch('/songs/recent');
       const songs = await res.json();
-
-      this.list.innerHTML = '';
-      if (songs.length === 0) {
-        this.list.innerHTML = html`<li class="empty">No community songs yet. Be the first to share!</li>`;
-        return;
-      }
-
-      songs.forEach(song => {
-        const li = document.createElement('li');
-        const date = new Date(song.created_at * 1000);
-        const dateStr = date.toLocaleDateString();
-        li.innerHTML = html`<span>${song.name || 'Untitled'}</span><span style="color:#888">${dateStr}</span>`;
-        li.addEventListener('click', () => {
-          this.list.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
-          li.classList.add('selected');
-          this._selectedCommunityId = song.id;
-        });
-        this.list.appendChild(li);
-      });
+      this.loading.stop();
+      this._communityCache = songs;
+      this._renderCommunitySongs(songs);
     } catch {
+      this.loading.stop();
       this.list.innerHTML = html`<li class="empty">Failed to load community songs</li>`;
     }
   }

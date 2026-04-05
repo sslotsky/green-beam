@@ -75,7 +75,8 @@ export class Recorder {
 
   get progress() {
     if (!this._playing || !this._playbackDuration) return 0;
-    const elapsed = performance.now() - this._playbackStart;
+    if (this._paused) return Math.min(this._pausedAt / this._playbackDuration, 1);
+    const elapsed = performance.now() - this._playbackStart + this._playbackOffset;
     return Math.min(elapsed / this._playbackDuration, 1);
   }
 
@@ -83,30 +84,68 @@ export class Recorder {
     return this._playing;
   }
 
+  get paused() {
+    return this._paused;
+  }
+
   playRecording(rec, allKeys) {
     this.stopPlayback(allKeys);
     this._playing = true;
+    this._paused = false;
+    this._playbackRec = rec;
+    this._playbackKeys = allKeys;
+    this._playbackDuration = rec.events[rec.events.length - 1].time + 100;
+    this._playbackOffset = 0;
+    this._scheduleFrom(0, allKeys);
+
+    document.addEventListener('visibilitychange', this._visibilityHandler = () => {
+      if (document.hidden && this._playing && !this._paused) this.pausePlayback();
+      else if (!document.hidden && this._playing && this._paused) this.resumePlayback();
+    });
+  }
+
+  _scheduleFrom(fromTime, allKeys) {
     this._timeouts = [];
     this._playbackStart = performance.now();
-    this._playbackDuration = rec.events[rec.events.length - 1].time + 100;
+    this._playbackOffset = fromTime;
 
     const keysByMidi = {};
     allKeys.forEach(k => { keysByMidi[k.midi] = k; });
 
-    for (const evt of rec.events) {
+    for (const evt of this._playbackRec.events) {
+      if (evt.time < fromTime) continue;
+      const delay = evt.time - fromTime;
       const tid = setTimeout(() => {
         const key = keysByMidi[evt.midi];
         if (!key) return;
         if (evt.type === 'on') key.press();
         else key.release();
-      }, evt.time);
+      }, delay);
       this._timeouts.push(tid);
     }
 
     this._timeouts.push(setTimeout(() => {
       this._playing = false;
+      this._cleanup();
       allKeys.forEach(k => { if (k.pressed) k.release(); });
-    }, this._playbackDuration));
+    }, this._playbackDuration - fromTime));
+  }
+
+  pausePlayback() {
+    if (!this._playing || this._paused) return;
+    this._paused = true;
+    this._pausedAt = performance.now() - this._playbackStart + this._playbackOffset;
+    if (this._timeouts) {
+      this._timeouts.forEach(clearTimeout);
+      this._timeouts = [];
+    }
+    this._playbackKeys.forEach(k => { if (k.pressed) k.release(); });
+  }
+
+  resumePlayback() {
+    if (!this._playing || !this._paused) return;
+    this._paused = false;
+    this._scheduleFrom(this._pausedAt, this._playbackKeys);
   }
 
   stopPlayback(allKeys) {
@@ -114,7 +153,17 @@ export class Recorder {
       this._timeouts.forEach(clearTimeout);
       this._timeouts = [];
     }
-    allKeys.forEach(k => { if (k.pressed) k.release(); });
+    const keys = allKeys || this._playbackKeys;
+    if (keys) keys.forEach(k => { if (k.pressed) k.release(); });
     this._playing = false;
+    this._paused = false;
+    this._cleanup();
+  }
+
+  _cleanup() {
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
   }
 }

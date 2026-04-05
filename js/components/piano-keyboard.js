@@ -76,6 +76,7 @@ export class PianoKeyboard extends HTMLElement {
     const canvasEl = canvas;
     canvasEl.addEventListener('mousedown', (e) => {
       const { x, y } = this.app.canvasCoords(e);
+      if (this._hitPauseBtn(x, y)) return;
       this._mouseKey = this._keyAtPoint(x, y);
       if (this._mouseKey) this._mouseKey.press();
     });
@@ -100,6 +101,7 @@ export class PianoKeyboard extends HTMLElement {
     canvasEl.addEventListener('touchstart', (e) => {
       e.preventDefault();
       const { x, y } = this.app.canvasCoords(e);
+      if (this._hitPauseBtn(x, y)) return;
       this._mouseKey = this._keyAtPoint(x, y);
       if (this._mouseKey) this._mouseKey.press();
     }, { passive: false });
@@ -141,6 +143,18 @@ export class PianoKeyboard extends HTMLElement {
     });
 
     this.app.registerCanvasComponent(this);
+  }
+
+  _hitPauseBtn(px, py) {
+    const a = this._pauseBtnArea;
+    if (!a) return false;
+    if (px >= a.x && px <= a.x + a.w && py >= a.y && py <= a.y + a.h) {
+      const { recorder } = this.app;
+      if (recorder.paused) recorder.resumePlayback();
+      else recorder.pausePlayback();
+      return true;
+    }
+    return false;
   }
 
   _keyAtPoint(px, py) {
@@ -185,27 +199,53 @@ export class PianoKeyboard extends HTMLElement {
     this.whiteKeys.forEach(key => key.draw(ctx));
     this.blackKeys.forEach(key => key.draw(ctx));
 
-    // Playback progress bar
+    // Playback progress bar with controls
     const { recorder } = this.app;
     if (recorder.playing) {
       const barHeight = 4;
       const barY = bodyTop + bodyHeight + 6;
       const progress = recorder.progress;
+      const btnSize = 10;
+      const btnX = bodyX;
+      const btnY = barY - 3;
+      const trackX = bodyX + btnSize + 8;
+      const trackWidth = bodyWidth - btnSize - 8;
+
+      // Pause/Play button
+      ctx.fillStyle = '#888';
+      if (recorder.paused) {
+        // Play triangle
+        ctx.beginPath();
+        ctx.moveTo(btnX, btnY);
+        ctx.lineTo(btnX, btnY + btnSize);
+        ctx.lineTo(btnX + btnSize, btnY + btnSize / 2);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Pause bars
+        ctx.fillRect(btnX, btnY, 3, btnSize);
+        ctx.fillRect(btnX + 5, btnY, 3, btnSize);
+      }
 
       // Track
       ctx.fillStyle = '#333';
       ctx.beginPath();
-      ctx.roundRect(bodyX, barY, bodyWidth, barHeight, 2);
+      ctx.roundRect(trackX, barY, trackWidth, barHeight, 2);
       ctx.fill();
 
       // Fill
       if (progress > 0) {
-        const fillWidth = bodyWidth * progress;
-        ctx.fillStyle = '#00ff40';
+        const fillWidth = trackWidth * progress;
+        ctx.fillStyle = recorder.paused ? '#888' : '#00ff40';
         ctx.beginPath();
-        ctx.roundRect(bodyX, barY, fillWidth, barHeight, 2);
+        ctx.roundRect(trackX, barY, fillWidth, barHeight, 2);
         ctx.fill();
       }
+
+      // Store hit areas for click handling
+      this._pauseBtnArea = { x: btnX, y: btnY, w: btnSize + 4, h: btnSize };
+    } else {
+      this._pauseBtnArea = null;
     }
   }
 }

@@ -184,21 +184,43 @@ app.get('/songs/:id', serveSongPage);
 app.get('/s/:id', serveSongPage);
 
 // Static files
-app.get('/', (c) => {
-  const html = fs.readFileSync(path.join(__dirname, 'canvas.html'), 'utf-8');
-  return c.html(html);
-});
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+};
 
-app.get('/og-home.png', (c) => {
-  const png = fs.readFileSync(path.join(__dirname, 'og-home.png'));
-  return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' } });
-});
+const STATIC_ALIASES = { '/': '/canvas.html' };
+const crypto = require('crypto');
 
-app.get('/js/*', (c) => {
-  const filePath = path.join(__dirname, c.req.path);
-  if (!fs.existsSync(filePath)) return c.notFound();
-  const content = fs.readFileSync(filePath, 'utf-8');
-  return new Response(content, { headers: { 'Content-Type': 'application/javascript' } });
+// Pre-compute ETags at startup
+const etagCache = {};
+function getEtag(filePath) {
+  if (!etagCache[filePath]) {
+    const content = fs.readFileSync(filePath);
+    etagCache[filePath] = { content, etag: `"${crypto.createHash('md5').update(content).digest('hex')}"` };
+  }
+  return etagCache[filePath];
+}
+
+app.get('/*', (c) => {
+  const urlPath = STATIC_ALIASES[c.req.path] || c.req.path;
+  const filePath = path.join(__dirname, urlPath);
+  const ext = path.extname(filePath);
+  const mimeType = MIME_TYPES[ext];
+
+  if (!mimeType || !fs.existsSync(filePath)) return c.notFound();
+
+  const { content, etag } = getEtag(filePath);
+
+  if (c.req.header('if-none-match') === etag) {
+    return new Response(null, { status: 304 });
+  }
+
+  return new Response(content, {
+    headers: { 'Content-Type': mimeType, 'Cache-Control': 'no-cache', 'ETag': etag },
+  });
 });
 
 serve({ fetch: app.fetch, port: 3000 }, () => {

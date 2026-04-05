@@ -100,6 +100,7 @@ async function generateOgImage(songTitle, instrument, events) {
                 height: '120px',
                 display: 'flex',
                 alignItems: 'flex-end',
+                justifyContent: 'center',
                 gap: '3px',
               },
               children: bars,

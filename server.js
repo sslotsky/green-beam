@@ -56,6 +56,7 @@ const findByData = db.prepare('SELECT id FROM songs WHERE data = ?');
 const findById = db.prepare('SELECT data, name FROM songs WHERE id = ?');
 const touchStmt = db.prepare('UPDATE songs SET last_accessed = unixepoch() WHERE id = ?');
 const expireStmt = db.prepare('DELETE FROM songs WHERE last_accessed < unixepoch() - ?');
+const recentStmt = db.prepare('SELECT id, name, created_at FROM songs WHERE name != \'\' ORDER BY created_at DESC LIMIT 20');
 
 function saveSong(data, name) {
   const existing = findByData.get(data);
@@ -141,6 +142,29 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: 'invalid json' }));
       }
     });
+    return;
+  }
+
+  // GET /songs/recent — community songs
+  if (req.method === 'GET' && req.url === '/songs/recent') {
+    const rows = recentStmt.all();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
+  // GET /songs/:id/data — fetch song data as JSON
+  const dataMatch = req.url.match(/^\/songs\/([A-Za-z0-9]+)\/data$/);
+  if (dataMatch) {
+    const row = findById.get(dataMatch[1]);
+    if (row) {
+      touchStmt.run(dataMatch[1]);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ data: row.data, name: row.name }));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'not found' }));
+    }
     return;
   }
 

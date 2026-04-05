@@ -52,8 +52,8 @@ export class JukeboxModal extends HTMLElement {
         } else {
           this.shareStatus.textContent = 'Link copied to clipboard!';
         }
-      } catch {
-        this.shareStatus.textContent = 'Failed to create link.';
+      } catch (err) {
+        this.shareStatus.textContent = err.message || 'Failed to create link.';
       }
     });
 

@@ -114,8 +114,9 @@ export async function shortenUrl(encoded) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ hash: encoded }),
   });
-  const { code } = await res.json();
-  return `${location.origin}/s/${code}`;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+  return `${location.origin}/s/${data.code}`;
 }
 
 export function loadFromHash() {

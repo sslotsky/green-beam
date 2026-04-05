@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'green-beam-recordings';
+const STORAGE_KEY = 'lumitone-recordings';
 
 export class Recorder {
   constructor() {

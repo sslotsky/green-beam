@@ -25,6 +25,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS links (
 )`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_hash ON links(hash)`);
 
+// Migrate: add last_accessed if missing (from pre-expiration schema)
+try {
+  db.exec(`ALTER TABLE links ADD COLUMN last_accessed INTEGER DEFAULT (unixepoch())`);
+} catch {
+  // Column already exists
+}
+
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 function generateCode(len = 6) {
   let code = '';

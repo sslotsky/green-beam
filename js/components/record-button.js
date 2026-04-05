@@ -1,7 +1,9 @@
+import { html } from '../html.js';
+
 export class RecordButton extends HTMLElement {
   connectedCallback() {
     this.app = this.closest('piano-app');
-    this.innerHTML = `
+    this.innerHTML = html`
       <button>
         <span class="rec-dot" style="width:12px;height:12px;border-radius:50%;background:#cc0000;display:inline-block;"></span>
         Record

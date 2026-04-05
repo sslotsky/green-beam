@@ -1,5 +1,6 @@
 import { Audio } from '../audio.js';
 import { Recorder } from '../recorder.js';
+import { Midi } from '../midi.js';
 import { loadFromHash, encode } from '../sharing.js';
 
 export class PianoApp extends HTMLElement {
@@ -7,6 +8,7 @@ export class PianoApp extends HTMLElement {
     super();
     this.audio = new Audio();
     this.recorder = new Recorder();
+    this.midi = new Midi();
     this.canvasComponents = [];
     this._animating = false;
   }

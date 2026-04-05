@@ -1,4 +1,5 @@
 import { makeShareUrl } from '../sharing.js';
+import { html } from '../html.js';
 
 export class JukeboxModal extends HTMLElement {
   constructor() {
@@ -8,7 +9,7 @@ export class JukeboxModal extends HTMLElement {
 
   connectedCallback() {
     this.app = this.closest('piano-app');
-    this.innerHTML = `
+    this.innerHTML = html`
       <div class="overlay" id="overlay">
         <div class="modal">
           <h2>Jukebox</h2>
@@ -81,7 +82,7 @@ export class JukeboxModal extends HTMLElement {
     const recordings = this.app.recorder.recordings;
 
     if (recordings.length === 0) {
-      this.list.innerHTML = '<li class="empty">No recordings yet</li>';
+      this.list.innerHTML = html`<li class="empty">No recordings yet</li>`;
       return;
     }
 
@@ -90,7 +91,7 @@ export class JukeboxModal extends HTMLElement {
       const li = document.createElement('li');
       const timeStr = rec.timestamp.toLocaleTimeString();
       const noteCount = rec.events.filter(e => e.type === 'on').length;
-      li.innerHTML = `<span>${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
+      li.innerHTML = html`<span>${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete-btn';

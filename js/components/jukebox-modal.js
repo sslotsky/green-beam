@@ -45,7 +45,7 @@ export class JukeboxModal extends HTMLElement {
       this.shareStatus.textContent = 'Creating link...';
       this.shareStatus.style.display = 'block';
       try {
-        const shortUrl = await shareSong(encoded);
+        const shortUrl = await shareSong(encoded, rec.name);
         await navigator.clipboard.writeText(shortUrl);
         if (truncated) {
           this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
@@ -97,12 +97,13 @@ export class JukeboxModal extends HTMLElement {
       const li = document.createElement('li');
       const timeStr = rec.timestamp.toLocaleTimeString();
       const noteCount = rec.events.filter(e => e.type === 'on').length;
-      li.innerHTML = html`<span>${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
+      const sharedIcon = rec.shared ? '<span title="Shared by another user" style="cursor:help">&#x1F517; </span>' : '';
+      li.innerHTML = html`<span>${sharedIcon}${rec.name}</span><span style="color:#888">${noteCount} notes - ${timeStr}</span>`;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete-btn';
       deleteBtn.innerHTML = '&#x1F5D1;';
-      deleteBtn.title = 'Delete';
+      deleteBtn.title = 'Remove from your jukebox';
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.app.recorder.delete(rec);

@@ -108,11 +108,11 @@ export function makeShareUrl(events) {
   return { url, encoded, ...result };
 }
 
-export async function shareSong(encoded) {
+export async function shareSong(encoded, name) {
   const res = await fetch('/songs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: encoded }),
+    body: JSON.stringify({ data: encoded, name }),
   });
   const result = await res.json();
   if (!res.ok) throw new Error(result.error);
@@ -120,7 +120,15 @@ export async function shareSong(encoded) {
 }
 
 export function loadFromHash() {
-  const hash = location.hash.slice(1);
-  if (!hash) return null;
-  return decode(hash);
+  const raw = location.hash.slice(1);
+  if (!raw) return null;
+  const [data, ...params] = raw.split('&');
+  const events = decode(data);
+  if (!events) return null;
+  let name = null;
+  for (const param of params) {
+    const [key, val] = param.split('=');
+    if (key === 'name') name = decodeURIComponent(val);
+  }
+  return { events, name };
 }

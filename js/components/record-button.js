@@ -16,9 +16,12 @@ export class RecordButton extends HTMLElement {
   _toggle() {
     const { recorder } = this.app;
     if (recorder.recording) {
-      recorder.stop();
+      const events = recorder.stop();
       this.dot.style.background = '#cc0000';
       this.dot.style.boxShadow = 'none';
+      if (events) {
+        this.app.querySelector('name-song-modal').open(events);
+      }
     } else {
       recorder.start();
       this.dot.style.background = '#ff0000';

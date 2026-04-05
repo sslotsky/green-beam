@@ -25,6 +25,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS songs (
 )`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_data ON songs(data)`);
 
+// Migrate: add name column if missing
+try {
+  db.exec(`ALTER TABLE songs ADD COLUMN name TEXT DEFAULT ''`);
+} catch {
+  // Column already exists
+}
+
 // Migrate from old shortlinks.db if it exists
 const oldDbPath = path.join(dbDir, 'shortlinks.db');
 if (fs.existsSync(oldDbPath)) {
@@ -44,18 +51,18 @@ function generateId(len = 6) {
   return id;
 }
 
-const insertStmt = db.prepare('INSERT INTO songs (id, data) VALUES (?, ?)');
+const insertStmt = db.prepare('INSERT INTO songs (id, data, name) VALUES (?, ?, ?)');
 const findByData = db.prepare('SELECT id FROM songs WHERE data = ?');
-const findById = db.prepare('SELECT data FROM songs WHERE id = ?');
+const findById = db.prepare('SELECT data, name FROM songs WHERE id = ?');
 const touchStmt = db.prepare('UPDATE songs SET last_accessed = unixepoch() WHERE id = ?');
 const expireStmt = db.prepare('DELETE FROM songs WHERE last_accessed < unixepoch() - ?');
 
-function saveSong(data) {
+function saveSong(data, name) {
   const existing = findByData.get(data);
   if (existing) return existing.id;
   let id;
   do { id = generateId(); } while (findById.get(id));
-  insertStmt.run(id, data);
+  insertStmt.run(id, data, name);
   return id;
 }
 
@@ -114,7 +121,7 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       try {
-        const { data } = JSON.parse(body);
+        const { data, name } = JSON.parse(body);
         if (!data || typeof data !== 'string') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'data required' }));
@@ -125,7 +132,8 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'Recording too large' }));
           return;
         }
-        const id = saveSong(data);
+        const songName = typeof name === 'string' ? name.slice(0, 100) : '';
+        const id = saveSong(data, songName);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ id }));
       } catch {
@@ -142,7 +150,8 @@ const server = http.createServer((req, res) => {
     const row = findById.get(songMatch[1]);
     if (row) {
       touchStmt.run(songMatch[1]);
-      res.writeHead(302, { Location: `/#${row.data}` });
+      const nameParam = row.name ? `&name=${encodeURIComponent(row.name)}` : '';
+      res.writeHead(302, { Location: `/#${row.data}${nameParam}` });
       res.end();
     } else {
       res.writeHead(404);

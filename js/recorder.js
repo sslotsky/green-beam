@@ -31,15 +31,18 @@ export class Recorder {
 
   stop() {
     this.recording = false;
-    if (this.currentEvents.length > 0) {
-      this.recordings.push({
-        name: `Recording ${this.recordings.length + 1}`,
-        timestamp: new Date(),
-        events: this.currentEvents,
-      });
-      this._save();
-    }
+    const events = this.currentEvents;
     this.currentEvents = [];
+    return events.length > 0 ? events : null;
+  }
+
+  save(name, events) {
+    this.recordings.push({
+      name,
+      timestamp: new Date(),
+      events,
+    });
+    this._save();
   }
 
   delete(rec) {

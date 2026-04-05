@@ -18,18 +18,20 @@ export class PianoApp extends HTMLElement {
     this.ctx = this.canvas.getContext('2d');
 
     // Load shared recording
-    const sharedEvents = loadFromHash();
-    if (sharedEvents) {
-      const hash = encode(sharedEvents);
+    const shared = loadFromHash();
+    if (shared) {
+      const hash = encode(shared.events);
       const existing = this.recorder.recordings.find(r => r.hash === hash);
       if (existing) {
         this.sharedRecording = existing;
       } else {
+        const displayName = shared.name || 'Shared Song';
         this.sharedRecording = {
-          name: 'Shared Song',
+          name: displayName,
           timestamp: new Date(),
-          events: sharedEvents,
+          events: shared.events,
           hash,
+          shared: true,
         };
         this.recorder.recordings.push(this.sharedRecording);
         this.recorder._save();

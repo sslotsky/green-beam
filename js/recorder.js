@@ -1,4 +1,9 @@
 const STORAGE_KEY = 'lumitone-recordings';
+// Server cap is 8192 base64 chars. Each event = 4 bytes, version = 1 byte.
+// base64 encodes 3 bytes into 4 chars, so max bytes ≈ 8192 * 3/4 = 6144.
+// Max events = (6144 - 1) / 4 = 1535
+const MAX_EVENTS = 1535;
+const WARN_THRESHOLD = 0.9;
 
 export class Recorder {
   constructor() {
@@ -54,8 +59,17 @@ export class Recorder {
     }
   }
 
+  get nearLimit() {
+    return this.recording && this.currentEvents.length >= MAX_EVENTS * WARN_THRESHOLD;
+  }
+
+  get atLimit() {
+    return this.currentEvents.length >= MAX_EVENTS;
+  }
+
   recordEvent(type, midi) {
     if (!this.recording) return;
+    if (this.atLimit) return;
     this.currentEvents.push({ type, midi, time: performance.now() - this.startTime });
   }
 

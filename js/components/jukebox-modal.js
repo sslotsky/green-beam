@@ -1,4 +1,4 @@
-import { makeShareUrl, shareSong } from '../sharing.js';
+import { encodeEvents, shareSong } from '../sharing.js';
 import { html } from '../html.js';
 
 export class JukeboxModal extends HTMLElement {
@@ -68,17 +68,13 @@ export class JukeboxModal extends HTMLElement {
     this.shareBtn.addEventListener('click', async () => {
       if (this._selectedIndex < 0 || this._activeTab !== 'mine') return;
       const rec = this.app.recorder.recordings[this._selectedIndex];
-      const { encoded, truncated, totalNotes, sharedNotes } = makeShareUrl(rec.events);
+      const encoded = encodeEvents(rec.events);
       this.shareStatus.textContent = 'Creating link...';
       this.shareStatus.style.display = 'block';
       try {
         const shortUrl = await shareSong(encoded, rec.name, rec.instrument);
         await navigator.clipboard.writeText(shortUrl);
-        if (truncated) {
-          this.shareStatus.textContent = `Link copied! Sharing first ${sharedNotes} of ${totalNotes} notes.`;
-        } else {
-          this.shareStatus.textContent = 'Link copied to clipboard!';
-        }
+        this.shareStatus.textContent = 'Link copied to clipboard!';
       } catch (err) {
         this.shareStatus.textContent = err.message || 'Failed to create link.';
       }

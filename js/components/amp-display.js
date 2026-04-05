@@ -19,6 +19,14 @@ export class AmpDisplay extends HTMLElement {
       }
     });
 
+    canvas.addEventListener('touchstart', (e) => {
+      const { x: px, y: py } = this.app.canvasCoords(e);
+      if (this.containsPoint(px, py)) {
+        e.preventDefault();
+        this.dispatchEvent(new CustomEvent('amp-click', { bubbles: true }));
+      }
+    }, { passive: false });
+
     canvas.addEventListener('mousemove', (e) => {
       const { x: px, y: py } = this.app.canvasCoords(e);
       const wasHover = this.hover;

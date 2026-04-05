@@ -96,6 +96,31 @@ export class PianoKeyboard extends HTMLElement {
       this._mouseKey = null;
     });
 
+    // Touch interaction
+    canvasEl.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const { x, y } = this.app.canvasCoords(e);
+      this._mouseKey = this._keyAtPoint(x, y);
+      if (this._mouseKey) this._mouseKey.press();
+    }, { passive: false });
+
+    canvasEl.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const { x, y } = this.app.canvasCoords(e);
+      const key = this._keyAtPoint(x, y);
+      if (key !== this._mouseKey) {
+        if (this._mouseKey) this._mouseKey.release();
+        this._mouseKey = key;
+        if (this._mouseKey) this._mouseKey.press();
+      }
+    }, { passive: false });
+
+    canvasEl.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (this._mouseKey) this._mouseKey.release();
+      this._mouseKey = null;
+    });
+
     // Keyboard interaction
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.altKey || e.ctrlKey) return;

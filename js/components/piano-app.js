@@ -57,9 +57,11 @@ export class PianoApp extends HTMLElement {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? e.changedTouches?.[0]?.clientY ?? 0;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   }
 

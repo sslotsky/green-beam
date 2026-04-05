@@ -22,6 +22,14 @@ export class JukeboxDisplay extends HTMLElement {
       }
     });
 
+    canvas.addEventListener('touchstart', (e) => {
+      const { x: px, y: py } = this.app.canvasCoords(e);
+      if (this.jukebox.containsPoint(px, py)) {
+        e.preventDefault();
+        this.dispatchEvent(new CustomEvent('jukebox-click', { bubbles: true }));
+      }
+    }, { passive: false });
+
     canvas.addEventListener('mousemove', (e) => {
       const { x: px, y: py } = this.app.canvasCoords(e);
       this._hover = this.jukebox.containsPoint(px, py);

@@ -1,4 +1,4 @@
-import { encodeEvents, shareSong } from '../sharing.js';
+import { encodeEvents, shareSong, decode } from '../sharing.js';
 import { html } from '../html.js';
 
 export class JukeboxModal extends HTMLElement {
@@ -209,7 +209,6 @@ export class JukeboxModal extends HTMLElement {
       if (!res.ok) throw new Error();
       const { data, name, instrument } = await res.json();
 
-      const { decode } = await import('../sharing.js');
       const events = decode(data);
       if (!events) return;
 

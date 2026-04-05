@@ -1,12 +1,7 @@
+const { default: satori } = require('satori');
 const { Resvg } = require('@resvg/resvg-js');
 const fs = require('fs');
 const path = require('path');
-
-let _satori;
-async function getSatori() {
-  if (!_satori) _satori = (await import('satori')).default;
-  return _satori;
-}
 
 const interRegular = fs.readFileSync(path.join(__dirname, 'fonts/Inter-Regular.ttf'));
 const interBold = fs.readFileSync(path.join(__dirname, 'fonts/Inter-Bold.ttf'));
@@ -54,7 +49,6 @@ async function generateOgImage(songTitle, instrument, events) {
   const displayInstrument = instrument ? instrument.replace(/_/g, ' ') : null;
   const bars = buildVisualization(events);
 
-  const satori = await getSatori();
   const svg = await satori(
     {
       type: 'div',

@@ -29,13 +29,14 @@ export class PianoKeyboard extends HTMLElement {
     const octaves = parseInt(this.getAttribute('octaves') || '3');
     const startMidi = parseInt(this.getAttribute('start-midi') || '48');
     const offsetX = parseInt(this.getAttribute('offset-x') || '30');
+    const offsetY = parseInt(this.getAttribute('offset-y') || '0');
 
     const pianoWidth = octaves * 7 * WHITE_KEY_WIDTH;
     const pianoX = (canvas.width - pianoWidth) / 2 + offsetX;
     this.bodyX = pianoX - BODY_PADDING;
     this.bodyWidth = pianoWidth + BODY_PADDING * 2;
     this.progressBarSpace = 14;
-    this.bodyTop = canvas.height - WHITE_KEY_HEIGHT - BODY_PADDING * 2 - this.progressBarSpace;
+    this.bodyTop = canvas.height - WHITE_KEY_HEIGHT - BODY_PADDING * 2 - this.progressBarSpace - offsetY;
     this.bodyHeight = WHITE_KEY_HEIGHT + BODY_PADDING * 2;
     const pianoY = this.bodyTop + BODY_PADDING;
 

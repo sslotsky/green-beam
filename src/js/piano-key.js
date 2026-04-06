@@ -22,7 +22,9 @@ export class PianoKey {
     if (this.pressed) return;
     this.pressed = true;
     const beamX = this.x + (this.width - this.beamWidth) / 2;
-    this.beams.push(new Beam(beamX, this.beamOriginY, this.beamWidth, 0, '#00ff40', 2));
+    const hue = Math.floor(Math.random() * 360);
+    const color = `hsl(${hue}, 80%, 55%)`;
+    this.beams.push(new Beam(beamX, this.beamOriginY, this.beamWidth, 0, color, 2));
     this.activeNote = this.audio.play(this.midi);
     this.recorder.recordEvent('on', this.midi);
   }

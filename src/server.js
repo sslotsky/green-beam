@@ -165,7 +165,7 @@ function songPage(row, url, id) {
     <meta name="twitter:description" content="${description}" />
     <meta name="twitter:image" content="${ogImageUrl}" />
   `;
-  const hashScript = html`<script>if(!location.hash)location.hash=${JSON.stringify(hash)};</script>`;
+  const hashScript = `<script>if(!location.hash)location.hash=${JSON.stringify(hash)};</script>`;
 
   return baseHtml
     .replace('</head>', `${ogTags}</head>`)

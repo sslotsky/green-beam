@@ -3,6 +3,7 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package.json package-lock.json build.js ./
 COPY src/ src/
+COPY vendor-entry/ vendor-entry/
 RUN npm ci
 RUN npm run build
 EXPOSE 3000

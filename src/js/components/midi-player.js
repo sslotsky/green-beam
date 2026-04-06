@@ -18,6 +18,7 @@ export class MidiPlayer extends HTMLElement {
         <div class="midi-track-list"></div>
         <button class="midi-play-btn">Play</button>
         <button class="midi-stop-btn" style="display:none">Stop</button>
+        <div class="midi-fallback-warning" style="display:none"></div>
       </div>
     `;
 
@@ -26,6 +27,7 @@ export class MidiPlayer extends HTMLElement {
     this.trackList = this.querySelector('.midi-track-list');
     this.playBtn = this.querySelector('.midi-play-btn');
     this.stopBtn = this.querySelector('.midi-stop-btn');
+    this.warning = this.querySelector('.midi-fallback-warning');
 
     this.playBtn.addEventListener('click', () => this._play());
     this.stopBtn.addEventListener('click', () => this._stop());
@@ -83,11 +85,9 @@ export class MidiPlayer extends HTMLElement {
   _instrumentName(track) {
     const name = track.instrument?.name;
     if (!name) return 'acoustic_grand_piano';
-    const snaked = name.toLowerCase().replace(/\s+/g, '_');
+    const snaked = name.toLowerCase().replace(/\s+/g, '_').replace(/[()]/g, '');
 
     const fixes = {
-      'electric_bass_(finger)': 'electric_bass_finger',
-      'electric_bass_(pick)': 'electric_bass_pick',
       'synthbrass_1': 'synth_brass_1',
       'synthbrass_2': 'synth_brass_2',
       'synthstrings_1': 'synth_strings_1',
@@ -159,6 +159,7 @@ export class MidiPlayer extends HTMLElement {
     if (track) {
       const name = this._instrumentName(track);
       const select = this.app.querySelector('instrument-selector select');
+      this.warning.style.display = 'none';
       this.app.audio.load(name).then(() => {
         if (select) {
           if (!select.querySelector(`option[value="${name}"]`)) {
@@ -170,17 +171,10 @@ export class MidiPlayer extends HTMLElement {
           select.value = name;
         }
       }).catch(() => {
-        console.warn(`Failed to load ${name}, falling back to piano`);
-        if (select) {
-          let opt = select.querySelector('option[value="__unrecognized"]');
-          if (!opt) {
-            opt = document.createElement('option');
-            opt.value = '__unrecognized';
-            opt.textContent = 'Unrecognized';
-            select.appendChild(opt);
-          }
-          select.value = '__unrecognized';
-        }
+        const displayName = track.instrument?.name || track.name || name.replace(/_/g, ' ');
+        this.warning.textContent = `"${displayName}" not available, using piano`;
+        this.warning.style.display = 'block';
+        if (select) select.value = 'acoustic_grand_piano';
         return this.app.audio.load('acoustic_grand_piano');
       });
     }

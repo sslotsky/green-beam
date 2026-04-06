@@ -11,7 +11,7 @@ export class Starfield extends HTMLElement {
         y: Math.random() * canvas.height,
         radius: Math.random() * 1.5 + 0.5,
         baseAlpha: Math.random() * 0.6 + 0.2,
-        speed: Math.random() * 0.02 + 0.005,
+        speed: Math.random() * 2 + 0.5,
         phase: Math.random() * Math.PI * 2,
       });
     }
@@ -51,7 +51,7 @@ export class Starfield extends HTMLElement {
 
     // Twinkle stars
     for (const star of this.stars) {
-      const alpha = star.baseAlpha + Math.sin(t * star.speed * 10 + star.phase) * 0.3;
+      const alpha = star.baseAlpha + Math.sin(t * star.speed + star.phase) * 0.3;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, alpha))})`;

@@ -10,3 +10,5 @@ import './components/instrument-selector.js';
 import './components/record-button.js';
 import './components/name-song-modal.js';
 import './components/loading-indicator.js';
+import './components/midi-player.js';
+import './components/learn-modal.js';

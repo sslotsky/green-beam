@@ -46,4 +46,14 @@ if (jsxFiles.length > 0) {
   }
 }
 
+// Bundle @tonejs/midi for browser
+fs.mkdirSync(path.join(dist, 'js', 'vendor'), { recursive: true });
+esbuild.buildSync({
+  entryPoints: [path.join(__dirname, 'vendor-entry', 'midi.js')],
+  bundle: true,
+  format: 'esm',
+  outfile: path.join(dist, 'js', 'vendor', 'tonejs-midi.js'),
+  platform: 'browser',
+});
+
 console.log(`Build complete (${jsxFiles.length} JSX file${jsxFiles.length !== 1 ? 's' : ''} compiled)`);

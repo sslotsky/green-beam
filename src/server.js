@@ -183,12 +183,25 @@ function serveSongPage(c) {
 app.get('/songs/:id', serveSongPage);
 app.get('/s/:id', serveSongPage);
 
+// GET /midi — list available MIDI files
+app.get('/midi', (c) => {
+  const midiDir = path.join(__dirname, 'midi');
+  if (!fs.existsSync(midiDir)) return c.json([]);
+  const files = fs.readdirSync(midiDir).filter(f => f.endsWith('.mid'));
+  const songs = files.map(f => ({
+    file: f,
+    name: f.replace(/\.mid$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+  }));
+  return c.json(songs);
+});
+
 // Static files
 const MIME_TYPES = {
   '.html': 'text/html',
   '.js': 'application/javascript',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.mid': 'audio/midi',
 };
 
 const STATIC_ALIASES = { '/': '/canvas.html' };

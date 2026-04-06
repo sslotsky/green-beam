@@ -1,11 +1,11 @@
 import { PianoKey } from '../piano-key.js';
 
-const WHITE_KEY_WIDTH = 36;
-const WHITE_KEY_HEIGHT = 150;
-const BLACK_KEY_WIDTH = 22;
-const BLACK_KEY_HEIGHT = 100;
-const BODY_PADDING = 12;
-const BEAM_WIDTH = BLACK_KEY_WIDTH - 10;
+const WHITE_KEY_WIDTH = 20;
+const WHITE_KEY_HEIGHT = 120;
+const BLACK_KEY_WIDTH = 13;
+const BLACK_KEY_HEIGHT = 80;
+const BODY_PADDING = 10;
+const BEAM_WIDTH = BLACK_KEY_WIDTH - 4;
 const BLACK_KEY_AFTER = new Set([0, 1, 3, 4, 5]);
 const WHITE_MIDI_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
 const BLACK_MIDI_OFFSETS = [1, 3, 6, 8, 10];

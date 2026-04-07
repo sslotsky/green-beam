@@ -191,7 +191,7 @@ app.get('/midi', (c) => {
   const songs = files.map(f => ({
     file: f,
     name: f.replace(/\.mid$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-  }));
+  })).sort((a, b) => a.name.localeCompare(b.name));
   return c.json(songs);
 });
 

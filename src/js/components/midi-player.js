@@ -94,6 +94,7 @@ export class MidiPlayer extends HTMLElement {
       'synthstrings_2': 'synth_strings_2',
       'standard_kit': 'synth_drum',
       'orchestra_kit': 'synth_drum',
+      'jazz_kit': 'synth_drum',
     };
     return fixes[snaked] || snaked;
   }

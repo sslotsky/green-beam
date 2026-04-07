@@ -18,6 +18,7 @@ export class MidiPlayer extends HTMLElement {
       <div class="midi-tracks" style="display:none">
         <div class="midi-song-name"></div>
         <div class="midi-track-list"></div>
+        <div class="midi-progress"><div class="midi-progress-fill"></div></div>
         <div class="midi-controls">
           <button class="midi-play-btn">Play</button>
           <button class="midi-pause-btn" style="display:none">Pause</button>
@@ -33,7 +34,63 @@ export class MidiPlayer extends HTMLElement {
     this.playBtn = this.querySelector('.midi-play-btn');
     this.pauseBtn = this.querySelector('.midi-pause-btn');
     this.stopBtn = this.querySelector('.midi-stop-btn');
+    this.progressBar = this.querySelector('.midi-progress');
+    this.progressFill = this.querySelector('.midi-progress-fill');
     this.warning = this.querySelector('.midi-fallback-warning');
+
+    // Progress bar seek
+    const pctFromEvent = (e) => {
+      const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+      const rect = this.progressBar.getBoundingClientRect();
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    const startDrag = (e) => {
+      if (!this._midi) return;
+      this._wasDraggingWhilePlaying = this._playing;
+      if (this._playing) this._pause();
+      const pct = pctFromEvent(e);
+      this._pausedAt = pct * this._midi.duration * 1000;
+      this.progressFill.style.width = `${pct * 100}%`;
+    };
+
+    const moveDrag = (e) => {
+      if (!this._midi) return;
+      const pct = pctFromEvent(e);
+      this._pausedAt = pct * this._midi.duration * 1000;
+      this.progressFill.style.width = `${pct * 100}%`;
+    };
+
+    const endDrag = () => {
+      if (this._wasDraggingWhilePlaying) {
+        this._resume();
+      }
+      this._wasDraggingWhilePlaying = false;
+    };
+
+    this.progressBar.addEventListener('mousedown', (e) => {
+      startDrag(e);
+      const onMove = (e) => moveDrag(e);
+      const onUp = () => {
+        endDrag();
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    this.progressBar.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startDrag(e);
+    }, { passive: false });
+
+    this.progressBar.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      moveDrag(e);
+    }, { passive: false });
+
+    this.progressBar.addEventListener('touchend', () => endDrag());
 
     this.playBtn.addEventListener('click', () => {
       if (this._pausedAt) this._resume();
@@ -319,6 +376,9 @@ export class MidiPlayer extends HTMLElement {
       for (const [i, el] of Object.entries(this._trackElements)) {
         el.classList.toggle('active', (this._trackActivity[i] || 0) > 0);
       }
+      const elapsed = Date.now() - this._startTime;
+      const progress = Math.min(elapsed / (this._midi.duration * 1000), 1);
+      this.progressFill.style.width = `${progress * 100}%`;
     }, 100);
 
     const duration = this._midi.duration * 1000 + 200 - offsetMs;
@@ -363,6 +423,7 @@ export class MidiPlayer extends HTMLElement {
     this._clearPlayback();
     this._playing = false;
     this._pausedAt = null;
+    this.progressFill.style.width = '0%';
     this.playBtn.style.display = 'flex';
     this.pauseBtn.style.display = 'none';
     this.stopBtn.style.display = 'none';

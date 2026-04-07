@@ -98,31 +98,46 @@ export class PianoKeyboard extends HTMLElement {
       this._mouseKey = null;
     });
 
-    // Touch interaction
+    // Touch interaction (multitouch)
+    this._touchKeys = {};
+
     canvasEl.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const { x, y } = this.app.canvasCoords(e);
-      if (this._hitPauseBtn(x, y)) return;
-      this._mouseKey = this._keyAtPoint(x, y);
-      if (this._mouseKey) this._mouseKey.press();
+      for (const touch of e.changedTouches) {
+        const { x, y } = this._touchCoords(touch);
+        if (this._hitPauseBtn(x, y)) continue;
+        const key = this._keyAtPoint(x, y);
+        if (key) {
+          key.press();
+          this._touchKeys[touch.identifier] = key;
+        }
+      }
     }, { passive: false });
 
     canvasEl.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      const { x, y } = this.app.canvasCoords(e);
-      const key = this._keyAtPoint(x, y);
-      if (key !== this._mouseKey) {
-        if (this._mouseKey) this._mouseKey.release();
-        this._mouseKey = key;
-        if (this._mouseKey) this._mouseKey.press();
+      for (const touch of e.changedTouches) {
+        const { x, y } = this._touchCoords(touch);
+        const key = this._keyAtPoint(x, y);
+        const prev = this._touchKeys[touch.identifier];
+        if (key !== prev) {
+          if (prev) prev.release();
+          if (key) key.press();
+          this._touchKeys[touch.identifier] = key || null;
+        }
       }
     }, { passive: false });
 
-    canvasEl.addEventListener('touchend', (e) => {
+    const onTouchEnd = (e) => {
       e.preventDefault();
-      if (this._mouseKey) this._mouseKey.release();
-      this._mouseKey = null;
-    });
+      for (const touch of e.changedTouches) {
+        const key = this._touchKeys[touch.identifier];
+        if (key) key.release();
+        delete this._touchKeys[touch.identifier];
+      }
+    };
+    canvasEl.addEventListener('touchend', onTouchEnd);
+    canvasEl.addEventListener('touchcancel', onTouchEnd);
 
     // Keyboard interaction
     window.addEventListener('keydown', (e) => {
@@ -144,6 +159,16 @@ export class PianoKeyboard extends HTMLElement {
     });
 
     this.app.registerCanvasComponent(this);
+  }
+
+  _touchCoords(touch) {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const scaleX = this.app.canvas.width / rect.width;
+    const scaleY = this.app.canvas.height / rect.height;
+    return {
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY,
+    };
   }
 
   _hitPauseBtn(px, py) {

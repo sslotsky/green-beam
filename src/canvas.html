@@ -33,9 +33,9 @@
 
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 10; }
     .overlay.open { display: flex; }
-    .modal { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 24px; min-width: 340px; max-height: 70vh; display: flex; flex-direction: column; gap: 16px; color: #fff; font-family: sans-serif; }
+    .modal { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 24px; min-width: 340px; max-height: 70dvh; display: flex; flex-direction: column; gap: 16px; color: #fff; font-family: sans-serif; overflow: hidden; }
     .modal h2 { margin: 0; font-size: 18px; }
-    .modal ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 50vh; }
+    .modal ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
     .modal li { padding: 10px 12px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
     .modal li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .modal li > span:last-child { white-space: nowrap; flex-shrink: 0; }
@@ -69,6 +69,7 @@
     .midi-drop-label { color: #666; font-size: 13px; font-family: sans-serif; }
     .learn-btn { background: #1a1a1a; border-color: #00ff40; color: #00ff40; }
     .learn-btn:hover { background: #00ff40; color: #000; }
+    .learn-modal .tab-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .learn-modal .song-list li { font-size: 14px; }
     .midi-tracks { display: flex; flex-direction: column; gap: 8px; }
     .midi-song-name { font-size: 12px; color: #00ff40; font-family: sans-serif; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -116,13 +116,25 @@ export class MidiPlayer extends HTMLElement {
     try {
       const res = await fetch(`/midi/${song.file}`);
       const buffer = await res.arrayBuffer();
-      this._midi = new Midi(buffer);
-      this._trackInstruments = {};
-      this._renderTracks();
-      await this._loadInstruments();
+      await this._loadBuffer(buffer);
     } catch {
       this.trackList.innerHTML = '<div class="midi-track" style="color:#888">Failed to load</div>';
     }
+  }
+
+  async loadFile(name, buffer) {
+    this._stop();
+    this.songName.textContent = name;
+    this.tracksContainer.style.display = 'flex';
+    this.trackList.innerHTML = '<div class="midi-track" style="color:#888">Loading...</div>';
+    await this._loadBuffer(buffer);
+  }
+
+  async _loadBuffer(buffer) {
+    this._midi = new Midi(buffer);
+    this._trackInstruments = {};
+    this._renderTracks();
+    await this._loadInstruments();
   }
 
   async _loadInstruments() {
@@ -334,7 +346,7 @@ export class MidiPlayer extends HTMLElement {
 
         if (endMs <= offsetMs) continue;
 
-        if (startMs > offsetMs) {
+        if (startMs >= offsetMs) {
           const onId = setTimeout(() => {
             this._trackActivity[i]++;
             if (!this._isTrackAudible(i)) return;

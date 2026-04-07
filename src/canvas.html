@@ -15,7 +15,7 @@
   <meta name="twitter:image" content="/og-home.png" />
   <style>
     body { margin: 0; background: #000; display: flex; height: 100vh; overflow: hidden; }
-    .sidebar { width: 180px; background: #111; border-right: 1px solid #333; padding: 16px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; flex-shrink: 0; }
+    .sidebar { width: 240px; background: #111; border-right: 1px solid #333; padding: 16px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; flex-shrink: 0; }
     .sidebar h1 { margin: 0; font-size: 16px; color: #00ff40; font-family: sans-serif; letter-spacing: 1px; }
     .sidebar label { color: #888; font-size: 11px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
     .sidebar select { width: 100%; padding: 6px 8px; font-size: 13px; border-radius: 4px; background: #222; color: #fff; border: 1px solid #444; }
@@ -46,11 +46,15 @@
     .modal .delete-btn { background: none; border: none; font-size: 16px; padding: 0 4px; cursor: pointer; opacity: 0.4; filter: grayscale(1); width: auto; }
     .modal .delete-btn:hover { opacity: 1; filter: none; }
     .midi-track-list { display: flex; flex-direction: column; gap: 2px; max-height: 150px; overflow-y: auto; }
-    .midi-track { padding: 6px 8px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; font-family: sans-serif; color: #ccc; background: #1a1a1a; }
+    .midi-track { padding: 4px 6px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; font-size: 12px; font-family: sans-serif; color: #ccc; background: #1a1a1a; gap: 4px; }
     .midi-track:hover { background: #222; }
     .midi-track.selected { background: #00ff40; color: #000; }
-    .midi-track > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-    .midi-track > span:last-child { white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
+    .midi-track .track-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+    .midi-track .track-btns { display: flex; gap: 2px; flex-shrink: 0; }
+    .midi-track .track-btns button { width: auto; padding: 1px 5px; font-size: 10px; font-weight: bold; border-radius: 3px; background: #333; border: 1px solid #555; color: #888; min-width: 0; }
+    .midi-track .track-btns button:hover { background: #444; }
+    .midi-track .track-btns button.muted { background: #663300; color: #ffaa00; border-color: #ffaa00; }
+    .midi-track .track-btns button.soloed { background: #003366; color: #44aaff; border-color: #44aaff; }
     .midi-track.active { animation: pulse 0.6s ease-in-out infinite alternate; }
     .midi-track.active.selected { animation: none; }
     @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }

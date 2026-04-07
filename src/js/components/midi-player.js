@@ -11,6 +11,8 @@ export class MidiPlayer extends HTMLElement {
     this._playing = false;
     this._trackInstruments = {};
     this._trackElements = {};
+    this._mutedTracks = new Set();
+    this._soloedTracks = new Set();
 
     this.innerHTML = html`
       <div class="midi-tracks" style="display:none">
@@ -133,12 +135,55 @@ export class MidiPlayer extends HTMLElement {
 
     this._trackElements = {};
     this._trackOrder = tracks.map(t => t.i);
+    this._mutedTracks.clear();
+    this._soloedTracks.clear();
     for (const { track, i } of tracks) {
       const instrName = track.instrument?.name || track.name || `Track ${i + 1}`;
       const div = document.createElement('div');
       div.className = 'midi-track' + (i === this._selectedTrack ? ' selected' : '');
       div.tabIndex = 0;
-      div.innerHTML = html`<span title="${instrName}">${instrName}</span><span style="color:#888">${track.notes.length}</span>`;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'track-name';
+      nameSpan.title = instrName;
+      nameSpan.textContent = instrName;
+
+      const btns = document.createElement('span');
+      btns.className = 'track-btns';
+
+      const muteBtn = document.createElement('button');
+      muteBtn.textContent = 'M';
+      muteBtn.title = 'Mute';
+      muteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this._mutedTracks.has(i)) {
+          this._mutedTracks.delete(i);
+          muteBtn.classList.remove('muted');
+        } else {
+          this._mutedTracks.add(i);
+          muteBtn.classList.add('muted');
+        }
+      });
+
+      const soloBtn = document.createElement('button');
+      soloBtn.textContent = 'S';
+      soloBtn.title = 'Solo';
+      soloBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this._soloedTracks.has(i)) {
+          this._soloedTracks.delete(i);
+          soloBtn.classList.remove('soloed');
+        } else {
+          this._soloedTracks.add(i);
+          soloBtn.classList.add('soloed');
+        }
+      });
+
+      btns.appendChild(muteBtn);
+      btns.appendChild(soloBtn);
+      div.appendChild(nameSpan);
+      div.appendChild(btns);
+
       div.addEventListener('click', () => this._selectTrack(i, div));
       div.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -196,6 +241,11 @@ export class MidiPlayer extends HTMLElement {
     }
   }
 
+  _isTrackAudible(i) {
+    if (this._soloedTracks.size > 0) return this._soloedTracks.has(i);
+    return !this._mutedTracks.has(i);
+  }
+
   _playTrackNote(trackIndex, midi) {
     const instr = this._trackInstruments[trackIndex];
     if (!instr) return;
@@ -230,6 +280,7 @@ export class MidiPlayer extends HTMLElement {
         if (startMs > offsetMs) {
           const onId = setTimeout(() => {
             this._trackActivity[i]++;
+            if (!this._isTrackAudible(i)) return;
             const selected = i === this._selectedTrack;
             if (selected) {
               const key = keysByMidi[note.midi];

@@ -40,38 +40,34 @@ export class PianoKeyboard extends HTMLElement {
     this.bodyHeight = WHITE_KEY_HEIGHT + BODY_PADDING * 2;
     const pianoY = this.bodyTop + BODY_PADDING;
 
-    let whiteIndex = 0;
-    let blackIndex = 0;
-
     for (let oct = 0; oct < octaves; oct++) {
       let blackMidiIndex = 0;
       for (let i = 0; i < 7; i++) {
         const x = pianoX + (oct * 7 + i) * WHITE_KEY_WIDTH;
-        const label = WHITE_LABELS[whiteIndex] || null;
         const midi = startMidi + oct * 12 + WHITE_MIDI_OFFSETS[i];
-        const key = new PianoKey(x, pianoY, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT, false, label, midi, {
+        const key = new PianoKey(x, pianoY, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT, false, null, midi, {
           beamWidth: BEAM_WIDTH, beamOriginY: this.bodyTop, audio: this.app.audio, recorder: this.app.recorder,
         });
         this.whiteKeys.push(key);
-        if (label) this.keysByLabel[label] = key;
-        whiteIndex++;
 
         if (BLACK_KEY_AFTER.has(i)) {
           const bx = x + WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2;
-          const bLabel = BLACK_LABELS[blackIndex] || null;
           const bMidi = startMidi + oct * 12 + BLACK_MIDI_OFFSETS[blackMidiIndex];
-          const bKey = new PianoKey(bx, pianoY, BLACK_KEY_WIDTH, BLACK_KEY_HEIGHT, true, bLabel, bMidi, {
+          const bKey = new PianoKey(bx, pianoY, BLACK_KEY_WIDTH, BLACK_KEY_HEIGHT, true, null, bMidi, {
             beamWidth: BEAM_WIDTH, beamOriginY: this.bodyTop, audio: this.app.audio, recorder: this.app.recorder,
           });
           this.blackKeys.push(bKey);
-          if (bLabel) this.keysByLabel[bLabel] = bKey;
-          blackIndex++;
           blackMidiIndex++;
         }
       }
     }
 
     this.allKeys.push(...this.whiteKeys, ...this.blackKeys);
+
+    // Label mapping — start in the middle, shift with arrows
+    this._octaves = octaves;
+    this._labelOctave = Math.floor(octaves / 2) - 1;
+    this._assignLabels();
 
     // Mouse interaction
     const canvasEl = canvas;
@@ -143,6 +139,18 @@ export class PianoKeyboard extends HTMLElement {
     window.addEventListener('keydown', (e) => {
       if (e.metaKey || e.altKey || e.ctrlKey) return;
       if (document.querySelector('.overlay.open')) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        this._shiftLabels(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        this._shiftLabels(1);
+        return;
+      }
+
       const label = e.key.toLowerCase();
       if (this.keysByLabel[label] && !this._heldKeys.has(label)) {
         this._heldKeys.add(label);
@@ -159,6 +167,46 @@ export class PianoKeyboard extends HTMLElement {
     });
 
     this.app.registerCanvasComponent(this);
+  }
+
+  _assignLabels() {
+    // Clear all labels
+    this.keysByLabel = {};
+    this.allKeys.forEach(k => { k.label = null; });
+
+    const startWhite = this._labelOctave * 7;
+    const startBlack = this._labelOctave * 5;
+
+    for (let i = 0; i < WHITE_LABELS.length; i++) {
+      const key = this.whiteKeys[startWhite + i];
+      if (key) {
+        key.label = WHITE_LABELS[i];
+        this.keysByLabel[WHITE_LABELS[i]] = key;
+      }
+    }
+    for (let i = 0; i < BLACK_LABELS.length; i++) {
+      const key = this.blackKeys[startBlack + i];
+      if (key) {
+        key.label = BLACK_LABELS[i];
+        this.keysByLabel[BLACK_LABELS[i]] = key;
+      }
+    }
+  }
+
+  _shiftLabels(dir) {
+    // Release any held keys before shifting
+    for (const label of this._heldKeys) {
+      if (this.keysByLabel[label]) this.keysByLabel[label].release();
+    }
+    this._heldKeys.clear();
+
+    const next = this._labelOctave + dir;
+    // 3 octaves of white labels = 21 keys, need at least that many remaining
+    const maxOctave = this._octaves - 3;
+    if (next >= 0 && next <= maxOctave) {
+      this._labelOctave = next;
+      this._assignLabels();
+    }
   }
 
   _touchCoords(touch) {

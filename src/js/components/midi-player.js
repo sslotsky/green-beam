@@ -16,8 +16,11 @@ export class MidiPlayer extends HTMLElement {
       <div class="midi-tracks" style="display:none">
         <div class="midi-song-name"></div>
         <div class="midi-track-list"></div>
-        <button class="midi-play-btn">Play</button>
-        <button class="midi-stop-btn" style="display:none">Stop</button>
+        <div class="midi-controls">
+          <button class="midi-play-btn">Play</button>
+          <button class="midi-pause-btn" style="display:none">Pause</button>
+          <button class="midi-stop-btn" style="display:none">Stop</button>
+        </div>
         <div class="midi-fallback-warning" style="display:none"></div>
       </div>
     `;
@@ -26,11 +29,23 @@ export class MidiPlayer extends HTMLElement {
     this.songName = this.querySelector('.midi-song-name');
     this.trackList = this.querySelector('.midi-track-list');
     this.playBtn = this.querySelector('.midi-play-btn');
+    this.pauseBtn = this.querySelector('.midi-pause-btn');
     this.stopBtn = this.querySelector('.midi-stop-btn');
     this.warning = this.querySelector('.midi-fallback-warning');
 
-    this.playBtn.addEventListener('click', () => this._play());
+    this.playBtn.addEventListener('click', () => {
+      if (this._pausedAt) this._resume();
+      else this._play();
+    });
+    this.pauseBtn.addEventListener('click', () => this._pause());
     this.stopBtn.addEventListener('click', () => this._stop());
+
+    this._onVisibilityChange = () => {
+      if (!this._playing && !this._pausedAt) return;
+      if (document.hidden) this._pause();
+      else this._resume();
+    };
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
   }
 
   async loadSong(song) {
@@ -189,14 +204,16 @@ export class MidiPlayer extends HTMLElement {
     if (active) this._activeNotes.push({ note: active, midi });
   }
 
-  _play() {
-    this._stop();
+  _play(offsetMs = 0) {
+    this._clearPlayback();
     this._playing = true;
+    this._startTime = Date.now() - offsetMs;
     this._trackActivity = {};
     this.playBtn.style.display = 'none';
+    this.pauseBtn.style.display = 'flex';
     this.stopBtn.style.display = 'flex';
 
-    this._loadSelectedInstrument();
+    if (offsetMs === 0) this._loadSelectedInstrument();
 
     const keyboard = this.app.querySelector('piano-keyboard');
     const keysByMidi = {};
@@ -208,21 +225,25 @@ export class MidiPlayer extends HTMLElement {
         const startMs = note.time * 1000;
         const endMs = (note.time + note.duration) * 1000;
 
-        const onId = setTimeout(() => {
-          this._trackActivity[i]++;
-          const selected = i === this._selectedTrack;
-          if (selected) {
-            const key = keysByMidi[note.midi];
-            if (key) {
-              key.press();
+        if (endMs <= offsetMs) continue;
+
+        if (startMs > offsetMs) {
+          const onId = setTimeout(() => {
+            this._trackActivity[i]++;
+            const selected = i === this._selectedTrack;
+            if (selected) {
+              const key = keysByMidi[note.midi];
+              if (key) {
+                key.press();
+              } else {
+                this._playTrackNote(i, note.midi);
+              }
             } else {
               this._playTrackNote(i, note.midi);
             }
-          } else {
-            this._playTrackNote(i, note.midi);
-          }
-        }, startMs);
-        this._timeouts.push(onId);
+          }, startMs - offsetMs);
+          this._timeouts.push(onId);
+        }
 
         const offId = setTimeout(() => {
           this._trackActivity[i]--;
@@ -238,7 +259,7 @@ export class MidiPlayer extends HTMLElement {
               break;
             }
           }
-        }, endMs);
+        }, endMs - offsetMs);
         this._timeouts.push(offId);
       }
     });
@@ -249,11 +270,28 @@ export class MidiPlayer extends HTMLElement {
       }
     }, 100);
 
-    const duration = this._midi.duration * 1000 + 200;
+    const duration = this._midi.duration * 1000 + 200 - offsetMs;
     this._timeouts.push(setTimeout(() => this._stop(), duration));
   }
 
-  _stop() {
+  _pause() {
+    if (!this._playing) return;
+    this._pausedAt = Date.now() - this._startTime;
+    this._clearPlayback();
+    this._playing = false;
+    this.playBtn.style.display = 'flex';
+    this.pauseBtn.style.display = 'none';
+    this.stopBtn.style.display = 'flex';
+  }
+
+  _resume() {
+    if (!this._pausedAt) return;
+    const offset = this._pausedAt;
+    this._pausedAt = null;
+    this._play(offset);
+  }
+
+  _clearPlayback() {
     if (this._activityInterval) {
       clearInterval(this._activityInterval);
       this._activityInterval = null;
@@ -266,12 +304,17 @@ export class MidiPlayer extends HTMLElement {
     if (this._trackElements) {
       for (const el of Object.values(this._trackElements)) el.classList.remove('active');
     }
-    this._playing = false;
-    this.playBtn.style.display = 'flex';
-    this.stopBtn.style.display = 'none';
-
     const keyboard = this.app.querySelector('piano-keyboard');
     if (keyboard) keyboard.allKeys.forEach(k => { if (k.pressed) k.release(); });
+  }
+
+  _stop() {
+    this._clearPlayback();
+    this._playing = false;
+    this._pausedAt = null;
+    this.playBtn.style.display = 'flex';
+    this.pauseBtn.style.display = 'none';
+    this.stopBtn.style.display = 'none';
   }
 }
 

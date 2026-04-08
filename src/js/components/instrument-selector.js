@@ -4,7 +4,7 @@ export class InstrumentSelector extends HTMLElement {
   connectedCallback() {
     this.app = this.closest('piano-app');
     const select = document.createElement('select');
-    Audio.instruments.forEach(name => {
+    [...Audio.instruments].sort((a, b) => a.localeCompare(b)).forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name.replace(/_/g, ' ');

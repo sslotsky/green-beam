@@ -183,11 +183,19 @@ function serveSongPage(c) {
 app.get('/songs/:id', serveSongPage);
 app.get('/s/:id', serveSongPage);
 
+// Resolve MIDI filename case-insensitively
+function findMidiFile(filename) {
+  const midiDir = path.join(__dirname, 'midi');
+  if (!fs.existsSync(midiDir)) return null;
+  const lower = filename.toLowerCase();
+  const match = fs.readdirSync(midiDir).find(f => f.toLowerCase() === lower);
+  return match || null;
+}
+
 // GET /midi-player/:filename/og.png — OG image for MIDI song
 app.get('/midi-player/:filename/og.png', async (c) => {
-  const filename = c.req.param('filename');
-  const filePath = path.join(__dirname, 'midi', filename);
-  if (!fs.existsSync(filePath)) return c.notFound();
+  const filename = findMidiFile(c.req.param('filename'));
+  if (!filename) return c.notFound();
   const songName = filename.replace(/\.mid$/, '').replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
   const png = await generateOgImage(songName, 'MIDI', []);
   return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
@@ -195,9 +203,8 @@ app.get('/midi-player/:filename/og.png', async (c) => {
 
 // GET /midi-player/:filename — deep link to MIDI song
 app.get('/midi-player/:filename', (c) => {
-  const filename = c.req.param('filename');
-  const filePath = path.join(__dirname, 'midi', filename);
-  if (!fs.existsSync(filePath)) return c.html(baseHtml);
+  const filename = findMidiFile(c.req.param('filename'));
+  if (!filename) return c.html(baseHtml);
   const songName = filename.replace(/\.mid$/, '').replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
   const ogImageUrl = new URL(`/midi-player/${filename}/og.png`, c.req.url).href;
 

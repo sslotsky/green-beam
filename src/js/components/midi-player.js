@@ -351,7 +351,7 @@ export class MidiPlayer extends HTMLElement {
     this._clearPlayback();
     this._playing = true;
     this._startTime = Date.now() - offsetMs;
-    this._trackActivity = {};
+    this._trackLastNote = {};
     this.playBtn.style.display = 'none';
     this.pauseBtn.style.display = 'flex';
     this.stopBtn.style.display = 'flex';
@@ -363,7 +363,7 @@ export class MidiPlayer extends HTMLElement {
     keyboard.allKeys.forEach(k => { keysByMidi[k.midi] = k; });
 
     this._midi.tracks.forEach((track, i) => {
-      this._trackActivity[i] = 0;
+      this._trackLastNote[i] = 0;
       for (const note of track.notes) {
         const startMs = note.time * 1000;
         const endMs = (note.time + note.duration) * 1000;
@@ -372,7 +372,7 @@ export class MidiPlayer extends HTMLElement {
 
         if (startMs >= offsetMs) {
           const onId = setTimeout(() => {
-            this._trackActivity[i]++;
+            this._trackLastNote[i] = Date.now();
             if (!this._isTrackAudible(i)) return;
             const selected = i === this._selectedTrack;
             const gain = this._trackVolumes[i] ?? 1;
@@ -391,7 +391,6 @@ export class MidiPlayer extends HTMLElement {
         }
 
         const offId = setTimeout(() => {
-          this._trackActivity[i]--;
           const selected = i === this._selectedTrack;
           if (selected) {
             const key = keysByMidi[note.midi];
@@ -410,8 +409,10 @@ export class MidiPlayer extends HTMLElement {
     });
 
     this._activityInterval = setInterval(() => {
+      const now = Date.now();
       for (const [i, el] of Object.entries(this._trackElements)) {
-        el.classList.toggle('active', (this._trackActivity[i] || 0) > 0);
+        const lastNote = this._trackLastNote[i] || 0;
+        el.classList.toggle('active', now - lastNote < 2000);
       }
       const elapsed = Date.now() - this._startTime;
       const progress = Math.min(elapsed / (this._midi.duration * 1000), 1);
@@ -448,7 +449,7 @@ export class MidiPlayer extends HTMLElement {
     this._timeouts = [];
     this._activeNotes.forEach(n => { try { n.note.stop(); } catch {} });
     this._activeNotes = [];
-    this._trackActivity = {};
+    this._trackLastNote = {};
     if (this._trackElements) {
       for (const el of Object.values(this._trackElements)) el.classList.remove('active');
     }

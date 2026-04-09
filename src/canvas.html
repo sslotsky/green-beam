@@ -62,9 +62,10 @@
     .midi-track .track-btns button.muted { background: #663300; color: #ffaa00; border-color: #ffaa00; }
     .midi-track .track-btns button.soloed { background: #003366; color: #44aaff; border-color: #44aaff; }
     .midi-track .track-btns button.vol-adjusted { background: #2a1a33; color: #bb77ff; border-color: #bb77ff; }
-    .midi-track.active { animation: pulse 0.6s ease-in-out infinite alternate; }
-    .midi-track.active.selected { animation: none; }
-    @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+    .midi-track.active { animation: pulse 1.2s ease-in-out infinite; }
+    .midi-track.active.selected { animation: pulse-selected 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+    @keyframes pulse-selected { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
     .midi-drop-zone { border: 2px dashed #444; border-radius: 6px; padding: 32px 16px; text-align: center; cursor: pointer; }
     .midi-drop-zone.drag-over { border-color: #00ff40; background: rgba(0,255,64,0.05); }
     .midi-drop-label { color: #666; font-size: 13px; font-family: sans-serif; }

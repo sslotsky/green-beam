@@ -41,16 +41,19 @@ function Visualization({ events }) {
 
   const maxDuration = Math.max(...notes.map(n => n.duration));
 
+  const bars = notes.slice(0, 60);
+  const totalWidth = bars.length * 6 + (bars.length - 1) * 3;
+  const padLeft = Math.floor((1080 - totalWidth) / 2);
+
   return (
     <div style={{
-      width: '600px',
-      height: '120px',
       display: 'flex',
       alignItems: 'flex-end',
-      justifyContent: 'center',
       gap: '3px',
+      height: '120px',
+      paddingLeft: `${padLeft}px`,
     }}>
-      {notes.slice(0, 60).map((note, i) => (
+      {bars.map((note, i) => (
         <NoteBar key={i} midi={note.midi} duration={note.duration} maxDuration={maxDuration} />
       ))}
     </div>

@@ -24,8 +24,9 @@ export class Spaceship extends HTMLElement {
       wobbleAmp: 8 + Math.random() * 15,
       phase: Math.random() * Math.PI * 2,
       size: 10 + Math.random() * 6,
-      rotation: 0,
-      rotSpeed: (Math.random() - 0.5) * 0.02,
+      tiltSpeed: 1.5 + Math.random() * 2,
+      tiltAmp: 0.15 + Math.random() * 0.15,
+      tiltPhase: Math.random() * Math.PI * 2,
     });
   }
 
@@ -125,7 +126,7 @@ export class Spaceship extends HTMLElement {
       const ship = this.ships[i];
       ship.x += ship.vx;
       ship.y = ship.baseY + Math.sin(t * ship.wobbleSpeed + ship.phase) * ship.wobbleAmp;
-      ship.rotation += ship.rotSpeed;
+      ship.rotation = Math.sin(t * ship.tiltSpeed + ship.tiltPhase) * ship.tiltAmp;
 
       // Check beam collision
       const hitColor = this._checkBeamCollision(ship);

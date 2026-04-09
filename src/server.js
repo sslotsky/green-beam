@@ -194,11 +194,34 @@ function findMidiFile(filename) {
 }
 
 // GET /midi-player/:filename/og.png — OG image for MIDI song
+const { Midi } = require('@tonejs/midi');
+
+function midiToEvents(filePath) {
+  const data = fs.readFileSync(filePath);
+  const midi = new Midi(data);
+  // Find the track with the most notes
+  let best = null;
+  for (const track of midi.tracks) {
+    if (!best || track.notes.length > best.notes.length) best = track;
+  }
+  if (!best) return [];
+  const events = [];
+  for (const note of best.notes) {
+    const timeMs = Math.round(note.time * 1000);
+    const endMs = Math.round((note.time + note.duration) * 1000);
+    events.push({ type: 'on', midi: note.midi, time: timeMs });
+    events.push({ type: 'off', midi: note.midi, time: endMs });
+  }
+  return events.sort((a, b) => a.time - b.time);
+}
+
 app.get('/midi-player/:filename/og.png', async (c) => {
   const filename = findMidiFile(c.req.param('filename'));
   if (!filename) return c.notFound();
   const songName = filename.replace(/\.mid$/, '').replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
-  const png = await generateOgImage(songName, 'MIDI', []);
+  const filePath = path.join(__dirname, 'midi', filename);
+  const events = midiToEvents(filePath);
+  const png = await generateOgImage(songName, 'MIDI', events);
   return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
 });
 

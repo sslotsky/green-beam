@@ -106,6 +106,12 @@ export class MidiPlayer extends HTMLElement {
       else this._resume();
     };
     document.addEventListener('visibilitychange', this._onVisibilityChange);
+
+    // Auto-load from deep link
+    if (window.__midiSong) {
+      this.loadSong(window.__midiSong);
+      delete window.__midiSong;
+    }
   }
 
   async loadSong(song) {

@@ -142,6 +142,7 @@ app.get('/songs/:id/og.png', async (c) => {
 
 // GET /songs/:id or /s/:id — serve app with OG tags
 const baseHtml = fs.readFileSync(path.join(__dirname, 'canvas.html'), 'utf-8');
+const strippedHtml = baseHtml.replace(/<meta\s+(property="og:|name="twitter:)[^>]*>/g, '');
 
 function songPage(row, url, id) {
   const songTitle = row.name || 'Shared Song';
@@ -167,7 +168,7 @@ function songPage(row, url, id) {
   `;
   const hashScript = `<script>if(!location.hash)location.hash=${JSON.stringify(hash)};</script>`;
 
-  return baseHtml
+  return strippedHtml
     .replace('</head>', `${ogTags}</head>`)
     .replace('</body>', `${hashScript}</body>`);
 }
@@ -224,7 +225,7 @@ app.get('/midi-player/:filename', (c) => {
   const loadScript = `<script>window.__midiSong=${JSON.stringify({ file: filename, name: songName })};</script>`;
 
   return c.html(
-    baseHtml
+    strippedHtml
       .replace('</head>', `${ogTags}</head>`)
       .replace('</body>', `${loadScript}</body>`)
   );

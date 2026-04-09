@@ -181,6 +181,7 @@ export class MidiPlayer extends HTMLElement {
     const snaked = name.toLowerCase().replace(/\s+/g, '_').replace(/[()]/g, '');
 
     const fixes = {
+      'honky-tonk_piano': 'honkytonk_piano',
       'synthbrass_1': 'synth_brass_1',
       'synthbrass_2': 'synth_brass_2',
       'synthstrings_1': 'synth_strings_1',

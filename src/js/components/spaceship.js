@@ -27,6 +27,8 @@ export class Spaceship extends HTMLElement {
       tiltSpeed: 1.5 + Math.random() * 2,
       tiltAmp: 0.15 + Math.random() * 0.15,
       tiltPhase: Math.random() * Math.PI * 2,
+      spinSpeed: 2 + Math.random() * 2,
+      spinPhase: Math.random() * Math.PI * 2,
     });
   }
 
@@ -161,17 +163,46 @@ export class Spaceship extends HTMLElement {
 
   draw(ctx) {
     // Draw ships
+    const t = performance.now() / 1000;
     for (const ship of this.ships) {
       ctx.save();
       ctx.translate(ship.x, ship.y);
       ctx.rotate(ship.rotation);
       const s = ship.size;
+      const spin = Math.cos(t * ship.spinSpeed + ship.spinPhase);
+      const spinSin = Math.sin(t * ship.spinSpeed + ship.spinPhase);
 
-      // Body
+      // Body — squash horizontally to fake 3D spin
+      ctx.save();
+      ctx.scale(1, 1);
       ctx.fillStyle = '#888';
       ctx.beginPath();
       ctx.ellipse(0, 0, s, s * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
+
+      // Ring detail — shifts with spin
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.85, s * 0.35, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Lights orbit around the rim
+      const lightR = s * 0.7;
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(spin * lightR, spinSin * s * 0.12, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#44ff44';
+      ctx.beginPath();
+      ctx.arc(-spin * lightR, -spinSin * s * 0.12, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Third light for depth
+      ctx.fillStyle = '#ffff44';
+      ctx.beginPath();
+      ctx.arc(spinSin * lightR, spin * s * 0.12, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       // Dome
       ctx.fillStyle = '#aaddff';
@@ -179,20 +210,10 @@ export class Spaceship extends HTMLElement {
       ctx.ellipse(0, -s * 0.2, s * 0.4, s * 0.35, 0, Math.PI, 0);
       ctx.fill();
 
-      // Dome shine
+      // Dome shine — shifts with spin
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.beginPath();
-      ctx.ellipse(-s * 0.1, -s * 0.35, s * 0.12, s * 0.08, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Lights
-      ctx.fillStyle = '#ff4444';
-      ctx.beginPath();
-      ctx.arc(-s * 0.6, 0, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#44ff44';
-      ctx.beginPath();
-      ctx.arc(s * 0.6, 0, 1.5, 0, Math.PI * 2);
+      ctx.ellipse(spin * s * 0.12, -s * 0.35, s * 0.1, s * 0.07, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();

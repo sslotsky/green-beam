@@ -29,6 +29,17 @@ export class PianoKey {
     this.recorder.recordEvent('on', this.midi);
   }
 
+  pressWithGain(gain) {
+    if (this.pressed) return;
+    this.pressed = true;
+    const beamX = this.x + (this.width - this.beamWidth) / 2;
+    const hue = Math.floor(Math.random() * 360);
+    const color = `hsl(${hue}, 80%, 55%)`;
+    this.beams.push(new Beam(beamX, this.beamOriginY, this.beamWidth, 0, color, 2));
+    this.activeNote = this.audio.play(this.midi, gain);
+    this.recorder.recordEvent('on', this.midi);
+  }
+
   release() {
     if (!this.pressed) return;
     this.pressed = false;

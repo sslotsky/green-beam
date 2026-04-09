@@ -13,6 +13,7 @@ export class MidiPlayer extends HTMLElement {
     this._trackElements = {};
     this._mutedTracks = new Set();
     this._soloedTracks = new Set();
+    this._trackVolumes = {};
 
     this.innerHTML = html`
       <div class="midi-tracks" style="display:none">
@@ -248,8 +249,24 @@ export class MidiPlayer extends HTMLElement {
         }
       });
 
+      const volBtn = document.createElement('button');
+      volBtn.textContent = 'V';
+      volBtn.title = `Volume: 100%`;
+      this._trackVolumes[i] = 1;
+      volBtn.addEventListener('click', (e) => e.stopPropagation());
+      volBtn.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY > 0 ? 0.1 : -0.1;
+        this._trackVolumes[i] = Math.max(0, Math.min(2, (this._trackVolumes[i] ?? 1) + delta));
+        const pct = Math.round(this._trackVolumes[i] * 100);
+        volBtn.title = `Volume: ${pct}%`;
+        volBtn.classList.toggle('vol-adjusted', this._trackVolumes[i] !== 1);
+      }, { passive: false });
+
       btns.appendChild(muteBtn);
       btns.appendChild(soloBtn);
+      btns.appendChild(volBtn);
       div.appendChild(nameSpan);
       div.appendChild(btns);
 
@@ -319,7 +336,8 @@ export class MidiPlayer extends HTMLElement {
     const instr = this._trackInstruments[trackIndex];
     if (!instr) return;
     this.app.audio.context.resume();
-    const active = instr.play(midi);
+    const gain = this._trackVolumes[trackIndex] ?? 1;
+    const active = instr.play(midi, 0, { gain });
     if (active) this._activeNotes.push({ note: active, midi });
   }
 
@@ -351,10 +369,11 @@ export class MidiPlayer extends HTMLElement {
             this._trackActivity[i]++;
             if (!this._isTrackAudible(i)) return;
             const selected = i === this._selectedTrack;
+            const gain = this._trackVolumes[i] ?? 1;
             if (selected) {
               const key = keysByMidi[note.midi];
               if (key) {
-                key.press();
+                key.pressWithGain(gain);
               } else {
                 this._playTrackNote(i, note.midi);
               }

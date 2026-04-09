@@ -33,10 +33,10 @@ export class Audio {
     return Soundfont.instrument(this.context, name).then(p => { this.instrument = p; });
   }
 
-  play(midi) {
+  play(midi, gain) {
     if (!this.instrument) return null;
     this.context.resume();
-    return this.instrument.play(midi);
+    return this.instrument.play(midi, 0, gain != null ? { gain } : undefined);
   }
 
   static get instruments() {

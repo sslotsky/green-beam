@@ -11,8 +11,9 @@ const HEIGHT = 630;
 
 function NoteBar({ midi, duration, maxLogDuration, minLogDuration }) {
   const logDur = Math.log(1 + duration);
-  const height = Math.max(20, Math.min(100, ((logDur - minLogDuration) / (maxLogDuration - minLogDuration)) * 80 + 20));
-  const hue = ((midi - 48) / 36) * 120;
+  const range = maxLogDuration - minLogDuration;
+  const height = range < 0.01 ? 60 : Math.max(20, Math.min(100, ((logDur - minLogDuration) / range) * 80 + 20));
+  const hue = Math.round((((midi - 48) / 36) * 120 + 360) % 360);
   return (
     <div style={{
       width: '6px',

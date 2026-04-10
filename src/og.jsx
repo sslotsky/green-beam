@@ -9,8 +9,9 @@ const interBold = fs.readFileSync(path.join(__dirname, 'fonts/Inter-Bold.ttf'));
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-function NoteBar({ midi, duration, maxDuration }) {
-  const height = Math.max(10, Math.min(100, (duration / maxDuration) * 100));
+function NoteBar({ midi, duration, maxLogDuration, minLogDuration }) {
+  const logDur = Math.log(1 + duration);
+  const height = Math.max(20, Math.min(100, ((logDur - minLogDuration) / (maxLogDuration - minLogDuration)) * 80 + 20));
   const hue = ((midi - 48) / 36) * 120;
   return (
     <div style={{
@@ -39,22 +40,24 @@ function Visualization({ events }) {
 
   if (notes.length === 0) return null;
 
-  const maxDuration = Math.max(...notes.map(n => n.duration));
-
-  const bars = notes.slice(0, 60);
-  const totalWidth = bars.length * 6 + (bars.length - 1) * 3;
-  const padLeft = Math.floor((1080 - totalWidth) / 2);
+  const count = Math.min(60, notes.length);
+  const step = notes.length / count;
+  const bars = Array.from({ length: count }, (_, i) => notes[Math.floor(i * step)]);
+  const logDurations = bars.map(n => Math.log(1 + n.duration));
+  const maxLogDuration = Math.max(...logDurations);
+  const minLogDuration = Math.min(...logDurations);
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'flex-end',
+      justifyContent: 'center',
       gap: '3px',
       height: '120px',
-      paddingLeft: `${padLeft}px`,
+      width: '1080px',
     }}>
       {bars.map((note, i) => (
-        <NoteBar key={i} midi={note.midi} duration={note.duration} maxDuration={maxDuration} />
+        <NoteBar key={i} midi={note.midi} duration={note.duration} maxLogDuration={maxLogDuration} minLogDuration={minLogDuration} />
       ))}
     </div>
   );

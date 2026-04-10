@@ -13,3 +13,4 @@ import './components/loading-indicator.js';
 import './components/spaceship.js';
 import './components/midi-player.js';
 import './components/learn-modal.js';
+import './components/music-visualizer.js';

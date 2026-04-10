@@ -24,13 +24,17 @@ const INSTRUMENTS = [
 export class Audio {
   constructor() {
     this.context = new (window.AudioContext || window.webkitAudioContext)();
+    this.analyser = this.context.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.analyser.smoothingTimeConstant = 0.8;
+    this.analyser.connect(this.context.destination);
     this.instrument = null;
   }
 
   load(name) {
     this.instrument = null;
     this.currentInstrument = name;
-    return Soundfont.instrument(this.context, name).then(p => { this.instrument = p; });
+    return Soundfont.instrument(this.context, name, { destination: this.analyser }).then(p => { this.instrument = p; });
   }
 
   play(midi, gain) {

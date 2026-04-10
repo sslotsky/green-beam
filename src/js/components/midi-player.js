@@ -152,7 +152,7 @@ export class MidiPlayer extends HTMLElement {
       if (track.notes.length === 0) continue;
       const name = this._instrumentName(track);
       if (!seen[name]) {
-        seen[name] = Soundfont.instrument(audioCtx, name);
+        seen[name] = Soundfont.instrument(audioCtx, name, { destination: this.app.audio.analyser });
       }
     }
 
@@ -163,7 +163,7 @@ export class MidiPlayer extends HTMLElement {
       } catch {
         console.warn(`Failed to load instrument: ${name}, falling back to piano`);
         if (!loaded['acoustic_grand_piano']) {
-          loaded['acoustic_grand_piano'] = await Soundfont.instrument(audioCtx, 'acoustic_grand_piano');
+          loaded['acoustic_grand_piano'] = await Soundfont.instrument(audioCtx, 'acoustic_grand_piano', { destination: this.app.audio.analyser });
         }
         loaded[name] = loaded['acoustic_grand_piano'];
       }
